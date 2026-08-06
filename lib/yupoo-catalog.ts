@@ -46,7 +46,7 @@ const EXCLUDED_PATTERNS: Array<[RegExp, string]> = [
   [/\b(kids?|children|youth)\b/i, "Producto infantil"],
   [/\b(women|woman|ladies|crop\s*top|vest)\b/i, "Modelo de mujer"],
   [/\b(shorts?|socks?)\b/i, "No es una camiseta"],
-  [/\b(training|tracksuit|windbreaker|jacket|coat|hoodie|down\s*jacket|thermal)\b/i, "Prenda de entrenamiento o abrigo"],
+  [/\b(pre[-\s]?match|warm[-\s]?up|training|tracksuit|windbreaker|jacket|coat|hoodie|down\s*jacket|thermal)\b/i, "Prenda prepartido, entrenamiento o abrigo"],
   [/\b(polo|t-?shirt)\b/i, "Polo o camiseta casual"],
   [/\b(jewellery|jewelry|nba|rugby|f1)\b/i, "Categoría distinta de fútbol"],
 ];
@@ -73,6 +73,17 @@ function stripTags(value: string) {
       .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
       .replace(/<[^>]+>/g, " ")
   );
+}
+
+function cleanAlbumTitle(value: string) {
+  return value
+    .replace(/[-–—]{1,2}\d{10,}\s*$/g, "")
+    .replace(/\(\s*without\s+sponsors?\s*\)/gi, "")
+    .replace(/\bwithout\s+sponsors?\b/gi, "")
+    .replace(/\b(?:XS|S|M|L|XL|2XL|3XL|4XL|5XL)\s*[-–]\s*(?:XL|2XL|3XL|4XL|5XL)\b/gi, "")
+    .replace(/\s*[-–—]\s*$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function readAttribute(markup: string, attribute: string) {
@@ -155,7 +166,8 @@ function parseCatalogPage(
       readAttribute(imageMarkup, "alt") ??
       stripTags(content);
 
-    const cleanTitle = stripTags(title || "");
+    const rawTitle = stripTags(title || "");
+    const cleanTitle = cleanAlbumTitle(rawTitle);
 
     if (!cleanTitle || cleanTitle.length < 3) continue;
 
@@ -164,7 +176,7 @@ function parseCatalogPage(
       readAttribute(imageMarkup, "data-src") ??
       readAttribute(imageMarkup, "src");
 
-    const classification = classifyTitle(cleanTitle);
+    const classification = classifyTitle(rawTitle);
 
     albums.set(albumId, {
       albumId,
@@ -221,9 +233,10 @@ export async function readYupooCatalogBatch(input: unknown) {
   const html = await fetchCatalogHtml(pageUrl);
   const albums = parseCatalogPage(html, pageUrl);
 
-  const eligible = albums
-    .filter((album) => album.eligible)
-    .slice(0, parsed.limit);
+  // Devolvemos todas las camisetas válidas de la página.
+  // La ruta del administrador quitará duplicados y aplicará después
+  // el límite de 10, 25, 40 o 50 elegido en la pantalla.
+  const eligible = albums.filter((album) => album.eligible);
 
   const excluded = albums.filter((album) => !album.eligible);
 
