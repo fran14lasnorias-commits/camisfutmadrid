@@ -77,82 +77,114 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <div
-          className="card"
-          style={{
-            minHeight: 500,
-            display: "grid",
-            placeItems: "center",
-            position: "relative",
-            overflow: "hidden",
-            padding: 28,
-            background:
-              "radial-gradient(circle at 50% 40%,#6d1dbb66,transparent 58%),#0e0e13",
-          }}
-        >
-          {featured ? (
-            <>
-              <img
-                src={featured.images[0]}
-                alt={featured.name}
+        {featured ? (
+          <Link
+            href={`/producto/${featured.slug}`}
+            aria-label={`Ver ${featured.name}`}
+            className="card"
+            style={{
+              minHeight: 500,
+              display: "grid",
+              placeItems: "center",
+              position: "relative",
+              overflow: "hidden",
+              padding: 28,
+              textDecoration: "none",
+              color: "inherit",
+              cursor: "pointer",
+              background:
+                "radial-gradient(circle at 50% 40%,#6d1dbb66,transparent 58%),#0e0e13",
+            }}
+          >
+            <img
+              src={featured.images[0]}
+              alt={featured.name}
+              style={{
+                width: "82%",
+                height: 390,
+                objectFit: "contain",
+                filter: "drop-shadow(0 32px 38px #000)",
+              }}
+            />
+
+            <div
+              style={{
+                position: "absolute",
+                left: 22,
+                right: 22,
+                bottom: 20,
+                padding: "14px 16px",
+                borderRadius: 16,
+                background: "rgba(8,8,12,.88)",
+                border: "1px solid rgba(255,255,255,.12)",
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              <span
                 style={{
-                  width: "82%",
-                  height: 390,
-                  objectFit: "contain",
-                  filter: "drop-shadow(0 32px 38px #000)",
+                  color: "#d6a6ff",
+                  fontSize: 12,
+                  fontWeight: 800,
                 }}
-              />
+              >
+                CAMISETA DESTACADA
+              </span>
 
               <div
                 style={{
-                  position: "absolute",
-                  left: 22,
-                  right: 22,
-                  bottom: 20,
-                  padding: "14px 16px",
-                  borderRadius: 16,
-                  background: "rgba(8,8,12,.82)",
-                  border: "1px solid rgba(255,255,255,.10)",
-                  backdropFilter: "blur(10px)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 14,
+                  alignItems: "center",
+                  marginTop: 5,
+                  flexWrap: "wrap",
                 }}
               >
-                <span
-                  style={{
-                    color: "#d6a6ff",
-                    fontSize: 12,
-                    fontWeight: 800,
-                  }}
-                >
-                  CAMISETA DESTACADA
-                </span>
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 14,
-                    alignItems: "center",
-                    marginTop: 5,
-                  }}
-                >
-                  <strong>{featured.name}</strong>
+                <div>
+                  <strong style={{ display: "block" }}>{featured.name}</strong>
                   <strong
                     style={{
+                      display: "block",
                       color: "var(--purple-2)",
-                      whiteSpace: "nowrap",
+                      marginTop: 4,
                     }}
                   >
                     {featured.price.toFixed(2).replace(".", ",")} €
                   </strong>
                 </div>
+
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    background: "var(--purple-2)",
+                    color: "white",
+                    fontSize: 13,
+                    fontWeight: 900,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  VER PRODUCTO →
+                </span>
               </div>
-            </>
-          ) : (
-            <div style={{ textAlign: "center" }}>
-              <strong>Próximamente nuevas camisetas</strong>
             </div>
-          )}
-        </div>
+          </Link>
+        ) : (
+          <div
+            className="card"
+            style={{
+              minHeight: 500,
+              display: "grid",
+              placeItems: "center",
+              padding: 28,
+            }}
+          >
+            <strong>Próximamente nuevas camisetas</strong>
+          </div>
+        )}
       </section>
 
       <section className="container" style={{ padding: "30px 0 70px" }}>
