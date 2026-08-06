@@ -37,6 +37,14 @@ function orderDate(value: string) {
 export default async function AccountPage() {
   const { supabase, user } = await requireUser();
 
+  // Recupera automáticamente los pedidos realizados como invitado
+  // que tengan el mismo correo que la cuenta iniciada.
+  const { error: claimError } = await supabase.rpc("claim_guest_orders");
+
+  if (claimError) {
+    console.error("No se pudieron vincular los pedidos de invitado:", claimError.message);
+  }
+
   const { data, error } = await supabase
     .from("orders")
     .select(`
