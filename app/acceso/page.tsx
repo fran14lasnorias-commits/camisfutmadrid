@@ -9,23 +9,117 @@ export default async function LoginPage({
   const params = await searchParams;
 
   return (
-    <main className="container" style={{ padding: "56px 0 90px", maxWidth: 520 }}>
+    <main
+      className="container"
+      style={{ padding: "56px 0 90px", maxWidth: 520 }}
+    >
       <section className="card" style={{ padding: 26 }}>
-        <span style={{ color: "#d6a6ff", fontWeight: 800 }}>ACCESO SEGURO</span>
-        <h1>Iniciar sesión</h1>
-        <p className="muted">Consulta tus pedidos, favoritos y direcciones.</p>
+        <span style={{ color: "#d6a6ff", fontWeight: 800 }}>
+          ACCESO SEGURO
+        </span>
 
-        {params.error && <p style={{ color: "#ff8c9c" }}>{params.error}</p>}
-        {params.message && <p style={{ color: "#79f2ad" }}>{params.message}</p>}
+        <h1>Iniciar sesión</h1>
+
+        <p className="muted">
+          Consulta tus pedidos, su estado y los datos de seguimiento.
+        </p>
+
+        {params.error && (
+          <p
+            role="alert"
+            style={{
+              padding: "12px 14px",
+              borderRadius: 12,
+              background: "rgba(255, 80, 105, .10)",
+              border: "1px solid rgba(255, 80, 105, .35)",
+              color: "#ff9aaa",
+            }}
+          >
+            {params.error}
+          </p>
+        )}
+
+        {params.message && (
+          <p
+            role="status"
+            style={{
+              padding: "12px 14px",
+              borderRadius: 12,
+              background: "rgba(61, 222, 138, .10)",
+              border: "1px solid rgba(61, 222, 138, .35)",
+              color: "#8af3b7",
+              lineHeight: 1.55,
+            }}
+          >
+            {params.message}
+          </p>
+        )}
 
         <form action={signIn} style={{ display: "grid", gap: 12 }}>
-          <input name="email" type="email" required placeholder="Email" style={inputStyle} />
-          <input name="password" type="password" required placeholder="Contraseña" style={inputStyle} />
-          <button className="btn-primary" type="submit">ENTRAR</button>
+          <label htmlFor="email" style={{ fontWeight: 700 }}>
+            Correo electrónico
+          </label>
+
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="tu@email.com"
+            style={inputStyle}
+          />
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+              marginTop: 4,
+            }}
+          >
+            <label htmlFor="password" style={{ fontWeight: 700 }}>
+              Contraseña
+            </label>
+
+            <Link
+              href="/recuperar-contrasena"
+              style={{
+                color: "#d6a6ff",
+                fontSize: 14,
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              He olvidado mi contraseña
+            </Link>
+          </div>
+
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            autoComplete="current-password"
+            placeholder="Tu contraseña"
+            style={inputStyle}
+          />
+
+          <button className="btn-primary" type="submit">
+            ENTRAR
+          </button>
         </form>
 
         <p className="muted" style={{ marginTop: 18 }}>
-          ¿No tienes cuenta? <Link href="/registro" style={{ color: "#d6a6ff" }}>Crear cuenta</Link>
+          ¿No tienes cuenta?{" "}
+          <Link
+            href="/registro"
+            style={{ color: "#d6a6ff", fontWeight: 700 }}
+          >
+            Crear cuenta
+          </Link>
         </p>
       </section>
     </main>
