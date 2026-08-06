@@ -1,7 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { AdminProductEditor } from "@/components/admin-product-editor";
+import {
+  bulkDeleteProducts,
+  bulkSetProductsPublished,
+} from "@/app/admin/productos/actions";
 
 type AdminProduct = {
   id: string;
@@ -45,6 +50,10 @@ export function AdminProductsBrowser({
   const [status, setStatus] = useState<StatusFilter>("all");
   const [type, setType] = useState("all");
   const [sort, setSort] = useState<SortMode>("newest");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [actionMessage, setActionMessage] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const availableTypes = useMemo(
     () =>
@@ -129,11 +138,90 @@ export function AdminProductsBrowser({
     type !== "all" ||
     sort !== "newest";
 
+  const visibleIds = filteredProducts.map((product) => product.id);
+  const allVisibleSelected =
+    visibleIds.length > 0 &&
+    visibleIds.every((id) => selected.includes(id));
+
+  function toggleProduct(productId: string) {
+    setSelected((current) =>
+      current.includes(productId)
+        ? current.filter((id) => id !== productId)
+        : [...current, productId]
+    );
+  }
+
+  function toggleVisibleProducts() {
+    setSelected((current) => {
+      if (allVisibleSelected) {
+        return current.filter((id) => !visibleIds.includes(id));
+      }
+
+      return Array.from(new Set([...current, ...visibleIds]));
+    });
+  }
+
+  function runPublishAction(published: boolean) {
+    if (!selected.length || isPending) return;
+
+    setActionMessage("");
+
+    startTransition(async () => {
+      try {
+        const result = await bulkSetProductsPublished(selected, published);
+        setActionMessage(
+          published
+            ? `${result.updated} productos publicados correctamente.`
+            : `${result.updated} productos enviados a borrador.`
+        );
+        setSelected([]);
+        router.refresh();
+      } catch (error) {
+        setActionMessage(
+          error instanceof Error
+            ? error.message
+            : "No se pudieron actualizar los productos."
+        );
+      }
+    });
+  }
+
+  function runDeleteAction() {
+    if (!selected.length || isPending) return;
+
+    const confirmed = window.confirm(
+      `Vas a eliminar ${selected.length} productos. Esta acción no se puede deshacer.`
+    );
+
+    if (!confirmed) return;
+
+    setActionMessage("");
+
+    startTransition(async () => {
+      try {
+        const result = await bulkDeleteProducts(selected);
+        setActionMessage(
+          `${result.deleted} productos eliminados correctamente.`
+        );
+        setSelected([]);
+        router.refresh();
+      } catch (error) {
+        setActionMessage(
+          error instanceof Error
+            ? error.message
+            : "No se pudieron eliminar los productos."
+        );
+      }
+    });
+  }
+
+
   function clearFilters() {
     setQuery("");
     setStatus("all");
     setType("all");
     setSort("newest");
+    setSelected([]);
   }
 
   return (
@@ -155,10 +243,15 @@ export function AdminProductsBrowser({
           </span>
         </div>
 
-        <strong>
-          {filteredProducts.length}{" "}
-          {filteredProducts.length === 1 ? "resultado" : "resultados"}
-        </strong>
+        <div style={{ textAlign: "right" }}>
+          <strong>
+            {filteredProducts.length}{" "}
+            {filteredProducts.length === 1 ? "resultado" : "resultados"}
+          </strong>
+          <span className="muted" style={{ display: "block", marginTop: 4 }}>
+            {selected.length} seleccionados
+          </span>
+        </div>
       </div>
 
       <div
@@ -264,6 +357,93 @@ export function AdminProductsBrowser({
         )}
       </div>
 
+      <div
+        className="card"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 14,
+          flexWrap: "wrap",
+          padding: 16,
+          marginTop: 14,
+          border: selected.length
+            ? "1px solid rgba(163,53,255,.45)"
+            : "1px solid var(--border)",
+        }}
+      >
+        <label
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 9,
+            fontWeight: 800,
+            cursor: visibleIds.length ? "pointer" : "default",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={allVisibleSelected}
+            disabled={!visibleIds.length || isPending}
+            onChange={toggleVisibleProducts}
+          />
+          Seleccionar resultados visibles
+        </label>
+
+        <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={!selected.length || isPending}
+            onClick={() => runPublishAction(true)}
+          >
+            {isPending ? "PROCESANDO..." : "PUBLICAR"}
+          </button>
+
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={!selected.length || isPending}
+            onClick={() => runPublishAction(false)}
+          >
+            PASAR A BORRADOR
+          </button>
+
+          <button
+            type="button"
+            disabled={!selected.length || isPending}
+            onClick={runDeleteAction}
+            style={{
+              padding: "11px 15px",
+              borderRadius: 10,
+              border: "1px solid rgba(255,80,105,.45)",
+              background: "rgba(255,80,105,.10)",
+              color: "#ff9aaa",
+              fontWeight: 900,
+              cursor:
+                !selected.length || isPending ? "not-allowed" : "pointer",
+            }}
+          >
+            ELIMINAR
+          </button>
+        </div>
+      </div>
+
+      {actionMessage && (
+        <div
+          role="status"
+          className="card"
+          style={{
+            padding: 14,
+            marginTop: 12,
+            color: "#d6a6ff",
+            border: "1px solid rgba(163,53,255,.35)",
+          }}
+        >
+          {actionMessage}
+        </div>
+      )}
+
       {!filteredProducts.length ? (
         <div className="card" style={{ padding: 24, marginTop: 14 }}>
           <strong>No se han encontrado productos.</strong>
@@ -273,9 +453,51 @@ export function AdminProductsBrowser({
         </div>
       ) : (
         <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
-          {filteredProducts.map((product) => (
-            <AdminProductEditor key={product.id} product={product} />
-          ))}
+          {filteredProducts.map((product) => {
+            const checked = selected.includes(product.id);
+
+            return (
+              <div
+                key={product.id}
+                style={{
+                  position: "relative",
+                  paddingLeft: 42,
+                  borderRadius: 16,
+                  outline: checked
+                    ? "2px solid rgba(163,53,255,.65)"
+                    : "none",
+                  outlineOffset: 2,
+                }}
+              >
+                <label
+                  aria-label={`Seleccionar ${product.name}`}
+                  style={{
+                    position: "absolute",
+                    left: 12,
+                    top: 28,
+                    zIndex: 2,
+                    display: "grid",
+                    width: 24,
+                    height: 24,
+                    placeItems: "center",
+                    borderRadius: 7,
+                    background: "#111118",
+                    border: "1px solid var(--border)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={isPending}
+                    onChange={() => toggleProduct(product.id)}
+                  />
+                </label>
+
+                <AdminProductEditor product={product} />
+              </div>
+            );
+          })}
         </div>
       )}
     </section>
