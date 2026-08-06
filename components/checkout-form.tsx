@@ -152,10 +152,70 @@ export function CheckoutForm() {
       <aside className="card" style={{padding:20,height:"max-content"}}>
         <h2>Resumen</h2>
         {items.map((item,index)=>(
-          <div key={index} style={{display:"flex",justifyContent:"space-between",gap:12,padding:"10px 0",borderBottom:"1px solid var(--border)"}}>
-            <span>{item.name} · {item.size}</span>
-            <strong>{item.unitPriceEur.toFixed(2).replace(".",",")} €</strong>
-          </div>
+          <article
+            key={`${item.productId}-${index}`}
+            style={{
+              display:"grid",
+              gridTemplateColumns:"64px minmax(0,1fr) auto",
+              gap:12,
+              alignItems:"center",
+              padding:"14px 0",
+              borderBottom:"1px solid var(--border)",
+            }}
+          >
+            <img
+              src={item.image}
+              alt={item.name}
+              style={{
+                width:64,
+                height:64,
+                objectFit:"contain",
+                borderRadius:10,
+                background:"#17171f",
+              }}
+            />
+
+            <div style={{minWidth:0}}>
+              <strong style={{display:"block",lineHeight:1.25}}>
+                {item.name}
+              </strong>
+
+              <span className="muted" style={{display:"block",marginTop:4}}>
+                Talla {item.size}
+                {item.quantity > 1 ? ` · ${item.quantity} unidades` : ""}
+              </span>
+
+              {item.personalizationName && (
+                <span
+                  style={{
+                    display:"block",
+                    marginTop:5,
+                    color:"#d6a6ff",
+                    fontWeight:800,
+                    fontSize:13,
+                  }}
+                >
+                  Nombre: {item.personalizationName} · Dorsal: {item.personalizationNumber}
+                </span>
+              )}
+
+              {item.patch && (
+                <span className="muted" style={{display:"block",marginTop:3,fontSize:13}}>
+                  Parche: {item.patch}
+                </span>
+              )}
+
+              {item.personalizationName && (
+                <span className="muted" style={{display:"block",marginTop:5,fontSize:11,lineHeight:1.35}}>
+                  Producto personalizado según los datos indicados.
+                </span>
+              )}
+            </div>
+
+            <strong style={{whiteSpace:"nowrap"}}>
+              {(item.unitPriceEur * item.quantity).toFixed(2).replace(".",",")} €
+            </strong>
+          </article>
         ))}
         <div style={{display:"flex",justifyContent:"space-between",marginTop:18}}>
           <span>Subtotal</span><strong>{subtotal.toFixed(2).replace(".",",")} €</strong>
