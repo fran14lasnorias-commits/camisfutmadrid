@@ -11,10 +11,20 @@ const TYPE_LABELS: Record<Product["type"], string> = {
   kids: "Niño",
 };
 
-export function CatalogBrowser({ products }: { products: Product[] }) {
+type CatalogBrowserProps = {
+  products: Product[];
+  initialTeam?: string;
+  initialType?: "Todos" | Product["type"];
+};
+
+export function CatalogBrowser({
+  products,
+  initialTeam = "Todos",
+  initialType = "Todos",
+}: CatalogBrowserProps) {
   const [query, setQuery] = useState("");
-  const [team, setTeam] = useState("Todos");
-  const [type, setType] = useState<"Todos" | Product["type"]>("Todos");
+  const [team, setTeam] = useState(initialTeam);
+  const [type, setType] = useState<"Todos" | Product["type"]>(initialType);
 
   const teams = useMemo(
     () =>
@@ -51,6 +61,10 @@ export function CatalogBrowser({ products }: { products: Product[] }) {
     setQuery("");
     setTeam("Todos");
     setType("Todos");
+
+    if (typeof window !== "undefined") {
+      window.history.replaceState({}, "", "/catalogo");
+    }
   }
 
   const filtersAreActive =
@@ -109,7 +123,24 @@ export function CatalogBrowser({ products }: { products: Product[] }) {
                 <button
                   key={item}
                   type="button"
-                  onClick={() => setTeam(item)}
+                  onClick={() => {
+                    setTeam(item);
+
+                    const params = new URLSearchParams(window.location.search);
+
+                    if (item === "Todos") {
+                      params.delete("team");
+                    } else {
+                      params.set("team", item);
+                    }
+
+                    const queryString = params.toString();
+                    window.history.replaceState(
+                      {},
+                      "",
+                      queryString ? `/catalogo?${queryString}` : "/catalogo"
+                    );
+                  }}
                   style={{
                     padding: "9px 12px",
                     borderRadius: 999,
@@ -150,9 +181,25 @@ export function CatalogBrowser({ products }: { products: Product[] }) {
                 <button
                   key={value}
                   type="button"
-                  onClick={() =>
-                    setType(value as "Todos" | Product["type"])
-                  }
+                  onClick={() => {
+                    const nextType = value as "Todos" | Product["type"];
+                    setType(nextType);
+
+                    const params = new URLSearchParams(window.location.search);
+
+                    if (nextType === "Todos") {
+                      params.delete("type");
+                    } else {
+                      params.set("type", nextType);
+                    }
+
+                    const queryString = params.toString();
+                    window.history.replaceState(
+                      {},
+                      "",
+                      queryString ? `/catalogo?${queryString}` : "/catalogo"
+                    );
+                  }}
                   style={{
                     padding: "9px 12px",
                     borderRadius: 999,
