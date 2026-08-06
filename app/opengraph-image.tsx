@@ -17,7 +17,7 @@ const SITE_URL = (
 ).replace(/\/$/, "");
 
 export default function OpenGraphImage() {
-  const logoUrl = `${SITE_URL}/logo-camisfut.webp`;
+  const logoUrl = `${SITE_URL}/logo-camisfut.png`;
 
   return new ImageResponse(
     (
