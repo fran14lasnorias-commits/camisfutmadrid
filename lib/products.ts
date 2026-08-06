@@ -1,0 +1,27 @@
+export type Product = {
+  id: string;
+  slug: string;
+  name: string;
+  team: string;
+  season: string;
+  type: "fan" | "player" | "retro" | "kids";
+  price: number;
+  costUsd: number;
+  images: string[];
+  sizes: string[];
+};
+
+export const products: Product[] = [
+  {
+    id: "rm-2627-home-fan",
+    slug: "real-madrid-2026-27-local-fan",
+    name: "Real Madrid 2026/27 Local Fan",
+    team: "Real Madrid",
+    season: "2026/27",
+    type: "fan",
+    price: 25,
+    costUsd: 10,
+    images: ["/placeholder-shirt.svg", "/placeholder-shirt-back.svg"],
+    sizes: ["S","M","L","XL","2XL","3XL","4XL"]
+  }
+];
