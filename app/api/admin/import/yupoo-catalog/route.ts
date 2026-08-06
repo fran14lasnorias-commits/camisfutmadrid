@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { requireAdmin } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import {
   readYupooCatalogBatch,
   YupooCatalogRequestSchema,
@@ -10,15 +10,103 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+async function checkAdmin() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return {
+      errorResponse: NextResponse.json(
+        { error: "La sesión ha caducado. Vuelve a iniciar sesión." },
+        { status: 401 }
+      ),
+    };
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    console.error(
+      "No se pudo comprobar el rol del importador:",
+      profileError.message
+    );
+
+    return {
+      errorResponse: NextResponse.json(
+        { error: "No se pudo comprobar el permiso de administrador." },
+        { status: 500 }
+      ),
+    };
+  }
+
+  if (profile?.role !== "admin") {
+    return {
+      errorResponse: NextResponse.json(
+        { error: "No tienes permiso para utilizar este importador." },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return { user };
+}
+
+export async function GET() {
+  const auth = await checkAdmin();
+
+  if ("errorResponse" in auth) {
+    return auth.errorResponse;
+  }
+
+  return NextResponse.json(
+    {
+      ok: true,
+      message: "Importador masivo conectado correctamente.",
+    },
+    {
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    }
+  );
+}
+
 export async function POST(request: Request) {
   try {
-    await requireAdmin();
+    const auth = await checkAdmin();
 
-    const body = await request.json();
+    if ("errorResponse" in auth) {
+      return auth.errorResponse;
+    }
+
+    let body: unknown;
+
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "La petición enviada no es válida." },
+        { status: 400 }
+      );
+    }
+
+    const source =
+      body && typeof body === "object"
+        ? (body as Record<string, unknown>)
+        : {};
+
     const input = YupooCatalogRequestSchema.parse({
-      url: body.url,
-      page: Number(body.page ?? 1),
-      limit: Number(body.limit ?? 25),
+      url: source.url,
+      page: Number(source.page ?? 1),
+      limit: Number(source.limit ?? 25),
     });
 
     const batch = await readYupooCatalogBatch(input);
