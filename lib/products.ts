@@ -13,7 +13,7 @@ export type Product = {
 
 export const products: Product[] = [
   {
-    id: "11111111-1111-4111-8111-111111111111",,
+    id: "11111111-1111-4111-8111-111111111111",
     slug: "real-madrid-2026-27-local-fan",
     name: "Real Madrid 2026/27 Local Fan",
     team: "Real Madrid",
