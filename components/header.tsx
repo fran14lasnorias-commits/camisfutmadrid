@@ -60,7 +60,16 @@ export function Header() {
     <header className="site-header">
       <div className="header-inner container">
         <Link href="/" className="brand" aria-label="Ir a la portada">
-          CAMISFUT<span>MADRID</span>
+          <img
+            src="/logo-camisfut.png"
+            alt=""
+            width={46}
+            height={46}
+            className="brand-logo"
+          />
+          <span className="brand-name">
+            CAMISFUT<span>MADRID</span>
+          </span>
         </Link>
 
         <button
@@ -114,6 +123,9 @@ export function Header() {
         }
 
         .brand {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
           color: white;
           font-size: 22px;
           font-weight: 900;
@@ -122,7 +134,20 @@ export function Header() {
           white-space: nowrap;
         }
 
-        .brand span {
+        .brand-logo {
+          width: 46px;
+          height: 46px;
+          flex: 0 0 46px;
+          object-fit: contain;
+          border-radius: 999px;
+          filter: drop-shadow(0 8px 14px rgba(150, 45, 255, 0.28));
+        }
+
+        .brand-name {
+          color: white;
+        }
+
+        .brand-name span {
           color: var(--purple-2);
         }
 
@@ -187,7 +212,14 @@ export function Header() {
           }
 
           .brand {
-            font-size: 19px;
+            gap: 8px;
+            font-size: 17px;
+          }
+
+          .brand-logo {
+            width: 40px;
+            height: 40px;
+            flex-basis: 40px;
           }
 
           .menu-button {
