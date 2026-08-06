@@ -212,6 +212,104 @@ function proxyImageUrl(sourceUrl: string | null, refererUrl: string) {
   return `/api/yupoo-image?u=${source}&r=${referer}`;
 }
 
+async function removeCatalogDuplicates(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  albums: CatalogAlbum[],
+  requestedLimit: number
+) {
+  if (!albums.length) {
+    return {
+      albums: [] as CatalogAlbum[],
+      hidden: 0,
+    };
+  }
+
+  const prepared = albums.map((album) => ({
+    album,
+    details: buildProductDetails(album),
+  }));
+
+  const supplierUrls = Array.from(
+    new Set(prepared.map(({ album }) => album.sourceUrl))
+  );
+
+  const productNames = Array.from(
+    new Set(prepared.map(({ details }) => details.name))
+  );
+
+  const [
+    { data: existingByUrl, error: urlError },
+    { data: existingByName, error: nameError },
+  ] = await Promise.all([
+    supplierUrls.length
+      ? supabase
+          .from("products")
+          .select("supplier_url")
+          .in("supplier_url", supplierUrls)
+      : Promise.resolve({ data: [], error: null }),
+    productNames.length
+      ? supabase
+          .from("products")
+          .select("name")
+          .in("name", productNames)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  if (urlError) throw new Error(urlError.message);
+  if (nameError) throw new Error(nameError.message);
+
+  const existingUrls = new Set(
+    (existingByUrl ?? [])
+      .map((row: { supplier_url: string | null }) => row.supplier_url)
+      .filter((value): value is string => Boolean(value))
+  );
+
+  const existingNames = new Set(
+    (existingByName ?? []).map((row: { name: string }) =>
+      row.name.trim().toLocaleLowerCase("es")
+    )
+  );
+
+  const seenUrls = new Set<string>();
+  const seenProductKeys = new Set<string>();
+  const uniqueAlbums: CatalogAlbum[] = [];
+
+  for (const { album, details } of prepared) {
+    const normalizedName = details.name
+      .trim()
+      .toLocaleLowerCase("es");
+
+    const productKey = [
+      normalizedName,
+      details.type,
+      details.season,
+    ].join("|");
+
+    const alreadyImported =
+      existingUrls.has(album.sourceUrl) ||
+      existingNames.has(normalizedName);
+
+    const repeatedInPage =
+      seenUrls.has(album.sourceUrl) ||
+      seenProductKeys.has(productKey);
+
+    if (alreadyImported || repeatedInPage) {
+      continue;
+    }
+
+    seenUrls.add(album.sourceUrl);
+    seenProductKeys.add(productKey);
+    uniqueAlbums.push(album);
+  }
+
+  const visibleAlbums = uniqueAlbums.slice(0, requestedLimit);
+
+  return {
+    albums: visibleAlbums,
+    hidden: albums.length - uniqueAlbums.length,
+  };
+}
+
 async function saveCatalogDrafts(
   supabase: Awaited<ReturnType<typeof createClient>>,
   albums: CatalogAlbum[]
@@ -388,13 +486,40 @@ export async function POST(request: Request) {
         limit: Number(source.limit ?? 25),
       });
 
-      const batch = await readYupooCatalogBatch(input);
-
-      return NextResponse.json(batch, {
-        headers: {
-          "Cache-Control": "no-store",
-        },
+      // Leemos el máximo de la página para poder ocultar repetidos
+      // y seguir mostrando tantas camisetas nuevas como sea posible.
+      const batch = await readYupooCatalogBatch({
+        ...input,
+        limit: 50,
       });
+
+      const filtered = await removeCatalogDuplicates(
+        auth.supabase,
+        batch.eligible as CatalogAlbum[],
+        input.limit
+      );
+
+      const warnings = [...batch.warnings];
+
+      if (filtered.hidden > 0) {
+        warnings.unshift(
+          `${filtered.hidden} productos repetidos o ya importados se han ocultado.`
+        );
+      }
+
+      return NextResponse.json(
+        {
+          ...batch,
+          eligible: filtered.albums,
+          duplicatesHidden: filtered.hidden,
+          warnings,
+        },
+        {
+          headers: {
+            "Cache-Control": "no-store",
+          },
+        }
+      );
     }
 
     if (source.mode === "catalog-save") {
