@@ -12,7 +12,13 @@ export const size = {
 
 export const contentType = "image/png";
 
+const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL || "https://www.camisfutmadrid.com"
+).replace(/\/$/, "");
+
 export default function OpenGraphImage() {
+  const logoUrl = `${SITE_URL}/logo-camisfut.webp`;
+
   return new ImageResponse(
     (
       <div
@@ -57,15 +63,15 @@ export default function OpenGraphImage() {
             display: "flex",
             flexDirection: "column",
             justifyContent: "space-between",
-            padding: "64px 72px",
-            width: "100%",
+            width: "72%",
+            padding: "58px 0 58px 66px",
           }}
         >
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              fontSize: 32,
+              fontSize: 31,
               fontWeight: 900,
               letterSpacing: -1,
             }}
@@ -74,7 +80,7 @@ export default function OpenGraphImage() {
             <span style={{ color: "#c45cff" }}>MADRID</span>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", width: 760 }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
             <div
               style={{
                 display: "flex",
@@ -84,7 +90,7 @@ export default function OpenGraphImage() {
                 background: "rgba(160, 54, 255, .20)",
                 border: "1px solid rgba(199, 111, 255, .45)",
                 color: "#e2b9ff",
-                fontSize: 20,
+                fontSize: 19,
                 fontWeight: 800,
               }}
             >
@@ -95,8 +101,8 @@ export default function OpenGraphImage() {
               style={{
                 display: "flex",
                 flexDirection: "column",
-                marginTop: 24,
-                fontSize: 70,
+                marginTop: 22,
+                fontSize: 66,
                 lineHeight: 0.98,
                 fontWeight: 900,
                 letterSpacing: -4,
@@ -109,9 +115,9 @@ export default function OpenGraphImage() {
             <div
               style={{
                 display: "flex",
-                marginTop: 24,
+                marginTop: 22,
                 color: "#c9c9d3",
-                fontSize: 26,
+                fontSize: 24,
                 lineHeight: 1.35,
               }}
             >
@@ -122,9 +128,9 @@ export default function OpenGraphImage() {
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "center",
-              fontSize: 22,
+              gap: 18,
+              fontSize: 21,
             }}
           >
             <span style={{ color: "#d6a6ff", fontWeight: 800 }}>
@@ -133,7 +139,7 @@ export default function OpenGraphImage() {
 
             <span
               style={{
-                padding: "12px 20px",
+                padding: "11px 18px",
                 borderRadius: 12,
                 background: "#a335ff",
                 fontWeight: 900,
@@ -141,6 +147,43 @@ export default function OpenGraphImage() {
             >
               VER CATÁLOGO →
             </span>
+          </div>
+        </div>
+
+        <div
+          style={{
+            width: "28%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            paddingRight: 54,
+          }}
+        >
+          <div
+            style={{
+              width: 300,
+              height: 300,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 999,
+              background: "rgba(10, 10, 15, .78)",
+              border: "3px solid rgba(196, 92, 255, .65)",
+              boxShadow: "0 30px 70px rgba(0,0,0,.55)",
+            }}
+          >
+            <img
+              src={logoUrl}
+              alt="Logo oficial de CamisfutMadrid"
+              width="260"
+              height="260"
+              style={{
+                width: 260,
+                height: 260,
+                objectFit: "contain",
+                borderRadius: 999,
+              }}
+            />
           </div>
         </div>
       </div>
