@@ -1,0 +1,581 @@
+.page {
+  width: min(1240px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 42px 0 88px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, .92fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.galleryCard,
+.configCard {
+  background: rgba(17, 17, 22, .94);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .26);
+}
+
+.galleryCard {
+  position: sticky;
+  top: 92px;
+  padding: 16px;
+}
+
+.previewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 2px 14px;
+}
+
+.previewBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #e3c4ff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.liveDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #62eda0;
+  box-shadow: 0 0 18px rgba(98, 237, 160, .8);
+}
+
+.viewSwitch {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  background: #09090d;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.viewButton {
+  appearance: none;
+  border: 0;
+  border-radius: 9px;
+  padding: 8px 12px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.viewButtonActive {
+  background: linear-gradient(90deg, rgba(139, 44, 255, .28), rgba(195, 92, 255, .22));
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(195, 92, 255, .4);
+}
+
+.previewStage {
+  position: relative;
+  min-height: 620px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(139, 44, 255, .24), transparent 34%),
+    linear-gradient(150deg, #1b1b25, #0b0b10 72%);
+  isolation: isolate;
+}
+
+.previewStage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .025) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,.7), transparent 94%);
+  z-index: -1;
+}
+
+.productImage {
+  display: block;
+  width: 91%;
+  height: 91%;
+  max-height: 690px;
+  object-fit: contain;
+  user-select: none;
+  filter: drop-shadow(0 30px 35px rgba(0, 0, 0, .38));
+}
+
+.personalizationLayer {
+  position: absolute;
+  left: 50%;
+  top: 19%;
+  width: 44%;
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  pointer-events: none;
+  text-align: center;
+  color: #fff;
+  z-index: 3;
+  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, .35));
+}
+
+.playerName {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: clamp(16px, 2.15vw, 31px);
+  line-height: 1;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  -webkit-text-stroke: 1.3px rgba(0, 0, 0, .88);
+  text-shadow:
+    -1px -1px 0 #111,
+    1px -1px 0 #111,
+    -1px 1px 0 #111,
+    1px 1px 0 #111;
+}
+
+.playerNumber {
+  margin-top: 2px;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: clamp(58px, 8.8vw, 126px);
+  line-height: .92;
+  letter-spacing: -.035em;
+  -webkit-text-stroke: 2.2px rgba(0, 0, 0, .9);
+  text-shadow:
+    -2px -2px 0 #111,
+    2px -2px 0 #111,
+    -2px 2px 0 #111,
+    2px 2px 0 #111;
+}
+
+.patchPreview {
+  position: absolute;
+  top: 39%;
+  right: 16%;
+  width: 54px;
+  min-height: 54px;
+  padding: 7px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #fff, #d8d8de);
+  color: #111;
+  border: 3px solid rgba(255, 255, 255, .85);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, .34);
+  text-align: center;
+  font-size: 8px;
+  font-weight: 1000;
+  line-height: 1.05;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.previewFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 4px 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.thumbnailRow {
+  display: flex;
+  gap: 8px;
+}
+
+.thumbnail {
+  width: 54px;
+  height: 54px;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #0d0d12;
+  cursor: pointer;
+}
+
+.thumbnailActive {
+  border-color: var(--purple-2);
+  box-shadow: 0 0 0 2px rgba(195, 92, 255, .16);
+}
+
+.thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.configCard {
+  padding: 26px;
+}
+
+.eyebrow {
+  margin: 0;
+  color: #d6a6ff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 10px 0 8px;
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.02;
+}
+
+.meta {
+  margin: 0 0 18px;
+  color: var(--muted);
+}
+
+.priceLine {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.price {
+  color: var(--purple-2);
+  font-size: 32px;
+  font-weight: 1000;
+}
+
+.priceNote {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.divider {
+  height: 1px;
+  margin: 24px 0;
+  background: var(--border);
+}
+
+.section {
+  display: grid;
+  gap: 12px;
+}
+
+.section + .section {
+  margin-top: 22px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 16px;
+}
+
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.optional {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sizeGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sizeButton {
+  min-width: 54px;
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 11px 13px;
+  background: #17171f;
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sizeButtonActive {
+  border-color: var(--purple-2);
+  background: linear-gradient(90deg, rgba(139, 44, 255, .34), rgba(195, 92, 255, .24));
+  box-shadow: 0 0 0 3px rgba(139, 44, 255, .11);
+}
+
+.toggleCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: #0d0d12;
+  cursor: pointer;
+}
+
+.toggleText {
+  display: grid;
+  gap: 4px;
+}
+
+.toggleText strong {
+  font-size: 14px;
+}
+
+.toggleText span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.switch {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #2a2a34;
+  transition: .2s ease;
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: .2s ease;
+}
+
+.switchOn {
+  background: linear-gradient(90deg, var(--purple), var(--purple-2));
+}
+
+.switchOn::after {
+  transform: translateX(20px);
+}
+
+.hiddenCheckbox {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: 10px;
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.input,
+.select {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  outline: none;
+  background: #0d0d12;
+  color: #fff;
+  font: inherit;
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--purple-2);
+  box-shadow: 0 0 0 3px rgba(139, 44, 255, .13);
+}
+
+.helper {
+  margin: -3px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.priceBreakdown {
+  display: grid;
+  gap: 8px;
+  margin-top: 22px;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: rgba(13, 13, 18, .84);
+}
+
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.priceRow strong {
+  color: #fff;
+}
+
+.totalRow {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.error {
+  margin: 14px 0 0;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 86, 111, .36);
+  border-radius: 12px;
+  background: rgba(255, 86, 111, .08);
+  color: #ff9cab;
+  font-size: 13px;
+}
+
+.buyButton {
+  width: 100%;
+  margin-top: 18px;
+  appearance: none;
+  border: 0;
+  border-radius: 15px;
+  padding: 16px 20px;
+  background: linear-gradient(90deg, var(--purple), var(--purple-2));
+  color: #fff;
+  font-size: 14px;
+  font-weight: 1000;
+  letter-spacing: .04em;
+  cursor: pointer;
+  box-shadow: 0 14px 34px rgba(139, 44, 255, .24);
+}
+
+.buyButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 42px rgba(139, 44, 255, .31);
+}
+
+.buyButton:disabled {
+  cursor: wait;
+  opacity: .75;
+}
+
+.trustRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.trustItem {
+  padding: 10px 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+@media (max-width: 920px) {
+  .page {
+    grid-template-columns: 1fr;
+    padding-top: 22px;
+  }
+
+  .galleryCard {
+    position: static;
+  }
+
+  .previewStage {
+    min-height: 520px;
+  }
+
+  .personalizationLayer {
+    top: 18.5%;
+    width: 47%;
+  }
+
+  .patchPreview {
+    right: 14%;
+  }
+}
+
+@media (max-width: 560px) {
+  .page {
+    width: min(100% - 20px, 1240px);
+    gap: 14px;
+    padding-bottom: 48px;
+  }
+
+  .galleryCard {
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .configCard {
+    padding: 20px;
+    border-radius: 18px;
+  }
+
+  .previewStage {
+    min-height: 420px;
+  }
+
+  .previewHeader {
+    align-items: flex-start;
+  }
+
+  .previewBadge {
+    font-size: 10px;
+  }
+
+  .viewButton {
+    padding: 7px 9px;
+  }
+
+  .fields {
+    grid-template-columns: 1fr 92px;
+  }
+
+  .trustRow {
+    grid-template-columns: 1fr;
+  }
+
+  .playerName {
+    font-size: clamp(14px, 5vw, 24px);
+  }
+
+  .playerNumber {
+    font-size: clamp(50px, 20vw, 90px);
+  }
+
+  .patchPreview {
+    width: 42px;
+    min-height: 42px;
+    font-size: 6px;
+  }
+}
