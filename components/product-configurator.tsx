@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Archivo_Black, Barlow_Condensed, Bebas_Neue, Rajdhani } from "next/font/google";
 import { useRouter } from "next/navigation";
@@ -343,6 +344,24 @@ export function ProductConfigurator({ product }: { product: Product }) {
               </button>
             ))}
           </div>
+
+          <Link
+            href="/guia-tallas"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
+              marginTop: 13,
+              color: "#d6a6ff",
+              fontSize: 14,
+              fontWeight: 800,
+              textDecoration: "none",
+            }}
+          >
+            ¿Dudas con la talla? Ver guía de tallas →
+          </Link>
         </section>
 
         <section className={styles.section}>
