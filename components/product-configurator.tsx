@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Archivo_Black, Barlow_Condensed, Bebas_Neue, Rajdhani } from "next/font/google";
 import { useRouter } from "next/navigation";
 import type { Product } from "@/lib/products";
 import { useCart } from "@/components/cart-provider";
@@ -8,6 +9,94 @@ import styles from "./product-configurator.module.css";
 
 const PERSONALIZATION_PRICE_EUR = 4;
 const PATCH_PRICE_EUR = 2;
+
+const laligaStyleFont = Barlow_Condensed({
+  subsets: ["latin"],
+  weight: ["700", "800", "900"],
+  variable: "--font-laliga-style",
+  display: "swap",
+  preload: false,
+});
+
+const premierStyleFont = Archivo_Black({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-premier-style",
+  display: "swap",
+  preload: false,
+});
+
+const federationStyleFont = Rajdhani({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-federation-style",
+  display: "swap",
+  preload: false,
+});
+
+const retroStyleFont = Bebas_Neue({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-retro-style",
+  display: "swap",
+  preload: false,
+});
+
+const letteringFontVariables = [
+  laligaStyleFont.variable,
+  premierStyleFont.variable,
+  federationStyleFont.variable,
+  retroStyleFont.variable,
+].join(" ");
+
+type LetteringProfile = {
+  label: string;
+  className: string;
+};
+
+const LALIGA_TEAMS = new Set([
+  "Real Madrid",
+  "Barcelona",
+  "Atlético de Madrid",
+  "Athletic Club",
+  "UD Almería",
+]);
+
+const ADIDAS_FEDERATIONS = new Set(["Argentina", "España", "Japón"]);
+const NIKE_FEDERATIONS = new Set([
+  "Brasil",
+  "Estados Unidos",
+  "Noruega",
+  "Países Bajos",
+]);
+
+function letteringProfileFor(product: Product): LetteringProfile {
+  if (product.type === "retro") {
+    return { label: "estilo retro de su temporada", className: styles.letteringRetro };
+  }
+
+  if (product.team === "Chelsea") {
+    return { label: "estilo visual Premier League", className: styles.letteringPremier };
+  }
+
+  if (LALIGA_TEAMS.has(product.team)) {
+    return { label: "estilo visual LALIGA", className: styles.letteringLaliga };
+  }
+
+  if (ADIDAS_FEDERATIONS.has(product.team)) {
+    return { label: "estilo selección adidas", className: styles.letteringAdidas };
+  }
+
+  if (NIKE_FEDERATIONS.has(product.team)) {
+    return { label: "estilo selección Nike", className: styles.letteringNike };
+  }
+
+  if (product.team === "Portugal") {
+    return { label: "estilo selección PUMA", className: styles.letteringPuma };
+  }
+
+  return { label: "estilo competición", className: styles.letteringGeneric };
+}
 
 const NATIONAL_TEAMS = new Set([
   "Argentina",
@@ -98,6 +187,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
   const previewName = name || "TU NOMBRE";
   const previewNumber = number || "00";
   const patchOptions = useMemo(() => patchOptionsFor(product), [product]);
+  const letteringProfile = useMemo(() => letteringProfileFor(product), [product]);
 
   function togglePersonalization(enabled: boolean) {
     setPersonalized(enabled);
@@ -148,7 +238,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
   }
 
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} ${letteringFontVariables}`}>
       <section className={styles.galleryCard} aria-label="Vista previa de la camiseta">
         <div className={styles.previewHeader}>
           <span className={styles.previewBadge}>
@@ -184,7 +274,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
           />
 
           {view === "back" && personalized && (
-            <div className={styles.personalizationLayer} aria-hidden="true">
+            <div className={`${styles.personalizationLayer} ${letteringProfile.className}`} aria-hidden="true">
               <span className={styles.playerName}>{previewName}</span>
               <strong className={styles.playerNumber}>{previewNumber}</strong>
             </div>
@@ -198,7 +288,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
         </div>
 
         <div className={styles.previewFooter}>
-          <span>Simulación orientativa de nombre, dorsal y parche.</span>
+          <span>Vista orientativa con {letteringProfile.label}.</span>
           <div className={styles.thumbnailRow}>
             <button
               type="button"
