@@ -354,7 +354,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
           <label className={styles.toggleCard}>
             <span className={styles.toggleText}>
               <strong>Añadir nombre y dorsal</strong>
-              <span>Verás el resultado directamente sobre la camiseta.</span>
+              <span>Vista previa orientativa: la fuente mostrada puede no coincidir exactamente con la oficial. La camiseta se entrega con la tipografía original del modelo seleccionado.</span>
             </span>
             <input
               type="checkbox"
