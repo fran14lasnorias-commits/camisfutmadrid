@@ -24,6 +24,7 @@ export function AdminProductEditor({ product }: { product: EditorProduct }) {
   const [open,setOpen] = useState(false);
   const [loading,setLoading] = useState(false);
   const [message,setMessage] = useState("");
+  const [imageFailed,setImageFailed] = useState(false);
   const [images,setImages] = useState(
     [...(product.product_images ?? [])]
       .sort((a,b)=>a.position-b.position)
@@ -70,18 +71,162 @@ export function AdminProductEditor({ product }: { product: EditorProduct }) {
     }
   }
 
+  const sortedImages = [...images];
+  const mainImage = sortedImages[0] ?? null;
+  const totalStock = variants.reduce(
+    (sum,item)=>sum+Number(item.stock),
+    0
+  );
+
+  const typeLabel: Record<string,string> = {
+    fan:"Fan",
+    player:"Player",
+    retro:"Retro",
+    kids:"Niño",
+    adult_kit:"Kit adulto",
+    polo:"Polo",
+    shorts:"Shorts",
+    socks:"Calcetines",
+    training:"Entrenamiento",
+    nba:"NBA",
+  };
+
   return (
     <article className="card" style={{padding:16}}>
-      <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:16,alignItems:"center"}}>
-        <div>
-          <strong>{product.name}</strong>
-          <div className="muted">{product.team} · {product.season} · {product.type}</div>
-          <div className="muted" style={{fontSize:13}}>
-            Stock: {variants.reduce((sum,item)=>sum+Number(item.stock),0)}
+      <div
+        style={{
+          display:"grid",
+          gridTemplateColumns:"88px minmax(0,1fr) auto",
+          gap:16,
+          alignItems:"center",
+        }}
+      >
+        <div
+          style={{
+            width:88,
+            height:88,
+            display:"grid",
+            placeItems:"center",
+            overflow:"hidden",
+            borderRadius:14,
+            border:"1px solid var(--border)",
+            background:"#0d0d12",
+          }}
+        >
+          {mainImage && !imageFailed ? (
+            <img
+              src={mainImage}
+              alt={product.name}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={()=>setImageFailed(true)}
+              style={{
+                width:"100%",
+                height:"100%",
+                objectFit:"cover",
+              }}
+            />
+          ) : (
+            <span
+              className="muted"
+              style={{
+                padding:8,
+                textAlign:"center",
+                fontSize:11,
+                lineHeight:1.35,
+              }}
+            >
+              Sin foto
+            </span>
+          )}
+        </div>
+
+        <div style={{minWidth:0}}>
+          <div
+            style={{
+              display:"flex",
+              gap:8,
+              alignItems:"center",
+              flexWrap:"wrap",
+              marginBottom:7,
+            }}
+          >
+            <span
+              style={{
+                display:"inline-flex",
+                padding:"5px 9px",
+                borderRadius:999,
+                background:product.published
+                  ? "rgba(61,222,138,.11)"
+                  : "rgba(255,184,77,.12)",
+                border:product.published
+                  ? "1px solid rgba(61,222,138,.35)"
+                  : "1px solid rgba(255,184,77,.38)",
+                color:product.published ? "#8af3b7" : "#ffd08a",
+                fontSize:11,
+                fontWeight:900,
+              }}
+            >
+              {product.published ? "PUBLICADO" : "BORRADOR"}
+            </span>
+
+            <span
+              style={{
+                display:"inline-flex",
+                padding:"5px 9px",
+                borderRadius:999,
+                background:"#25103e",
+                color:"#d6a6ff",
+                fontSize:11,
+                fontWeight:800,
+              }}
+            >
+              {typeLabel[product.type] ?? product.type}
+            </span>
+          </div>
+
+          <strong
+            style={{
+              display:"block",
+              fontSize:17,
+              lineHeight:1.4,
+              overflowWrap:"anywhere",
+            }}
+          >
+            {product.name}
+          </strong>
+
+          <div className="muted" style={{marginTop:5}}>
+            {[product.team,product.season].filter(Boolean).join(" · ")}
+          </div>
+
+          <div
+            style={{
+              display:"flex",
+              gap:14,
+              flexWrap:"wrap",
+              marginTop:8,
+              fontSize:13,
+            }}
+          >
+            <span className="muted">
+              Stock: <strong style={{color:"white"}}>{totalStock}</strong>
+            </span>
+            <span className="muted">
+              Precio:{" "}
+              <strong style={{color:"white"}}>
+                {Number(product.price_eur).toFixed(2).replace(".",",")} €
+              </strong>
+            </span>
           </div>
         </div>
-        <strong>{Number(product.price_eur).toFixed(2).replace(".",",")} €</strong>
-        <button className="btn-secondary" onClick={()=>setOpen(value=>!value)}>
+
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={()=>setOpen(value=>!value)}
+          style={{whiteSpace:"nowrap"}}
+        >
           {open ? "CERRAR" : "EDITAR"}
         </button>
       </div>
