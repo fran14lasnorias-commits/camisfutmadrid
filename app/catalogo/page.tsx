@@ -1,8 +1,38 @@
 import { CatalogBrowser } from "@/components/catalog-browser";
 import { getPublishedProducts } from "@/lib/catalog";
+import type { Product } from "@/lib/products";
 
-export default async function CatalogPage() {
+const ALLOWED_TYPES: Product["type"][] = [
+  "fan",
+  "player",
+  "retro",
+  "kids",
+];
+
+export default async function CatalogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    type?: string;
+    team?: string;
+  }>;
+}) {
   const products = await getPublishedProducts();
+  const params = await searchParams;
+
+  const requestedType = params.type?.toLowerCase();
+  const initialType: "Todos" | Product["type"] =
+    requestedType &&
+    ALLOWED_TYPES.includes(requestedType as Product["type"])
+      ? (requestedType as Product["type"])
+      : "Todos";
+
+  const availableTeams = new Set(products.map((product) => product.team));
+  const requestedTeam = params.team?.trim();
+  const initialTeam =
+    requestedTeam && availableTeams.has(requestedTeam)
+      ? requestedTeam
+      : "Todos";
 
   return (
     <main className="container" style={{ padding: "46px 0 80px" }}>
@@ -16,7 +46,11 @@ export default async function CatalogPage() {
         Encuentra tu camiseta por equipo, temporada o versión.
       </p>
 
-      <CatalogBrowser products={products} />
+      <CatalogBrowser
+        products={products}
+        initialType={initialType}
+        initialTeam={initialTeam}
+      />
     </main>
   );
 }
