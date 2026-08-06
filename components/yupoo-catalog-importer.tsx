@@ -80,7 +80,13 @@ export function YupooCatalogImporter() {
   const [batch, setBatch] = useState<CatalogBatch | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [saveResult, setSaveResult] = useState<{
+    imported: number;
+    skipped: number;
+    names: string[];
+  } | null>(null);
 
   const allEligibleSelected =
     !!batch?.eligible.length &&
@@ -97,6 +103,7 @@ export function YupooCatalogImporter() {
   async function analyzeCatalog() {
     setLoading(true);
     setMessage("");
+    setSaveResult(null);
     setBatch(null);
     setSelected([]);
 
@@ -132,6 +139,51 @@ export function YupooCatalogImporter() {
       );
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function saveSelectedDrafts() {
+    if (!selectedAlbums.length || saving) return;
+
+    setSaving(true);
+    setMessage("");
+    setSaveResult(null);
+
+    try {
+      const response = await fetch("/api/admin/import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mode: "catalog-save",
+          albums: selectedAlbums.map((album) => ({
+            albumId: album.albumId,
+            sourceUrl: album.sourceUrl,
+            title: album.title,
+            coverImage: album.coverImage,
+          })),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ?? "No se pudieron guardar los borradores."
+        );
+      }
+
+      setSaveResult(data);
+      setSelected([]);
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "No se pudieron guardar los borradores."
+      );
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -473,16 +525,67 @@ export function YupooCatalogImporter() {
             }}
           >
             <strong>
-              {selectedAlbums.length} camisetas preparadas para la siguiente
-              fase
+              {selectedAlbums.length} camisetas seleccionadas
             </strong>
 
-            <p className="muted" style={{ marginBottom: 0, lineHeight: 1.6 }}>
-              En el siguiente paso añadiremos el botón para importarlas como
-              borradores, con 1.000 unidades por talla y sin publicarlas
-              automáticamente.
+            <p className="muted" style={{ lineHeight: 1.6 }}>
+              Se guardarán como borradores, con 1.000 unidades en S, M, L, XL,
+              2XL, 3XL y 4XL. No aparecerán en el catálogo hasta que las revises
+              y las publiques desde Productos.
             </p>
+
+            <button
+              type="button"
+              onClick={saveSelectedDrafts}
+              disabled={!selectedAlbums.length || saving}
+              className="btn-primary"
+              style={{ width: "100%" }}
+            >
+              {saving
+                ? "GUARDANDO BORRADORES..."
+                : `GUARDAR ${selectedAlbums.length} SELECCIONADOS COMO BORRADORES`}
+            </button>
           </section>
+
+          {saveResult && (
+            <section
+              className="card"
+              style={{
+                padding: 20,
+                border: "1px solid rgba(61,222,138,.35)",
+                background: "rgba(61,222,138,.08)",
+              }}
+            >
+              <strong style={{ color: "#8af3b7" }}>
+                Importación terminada
+              </strong>
+
+              <p style={{ lineHeight: 1.65, marginBottom: 0 }}>
+                Se han creado <strong>{saveResult.imported}</strong> borradores.
+                {saveResult.skipped > 0 && (
+                  <>
+                    {" "}
+                    Se han omitido <strong>{saveResult.skipped}</strong> porque
+                    ya estaban importados.
+                  </>
+                )}
+              </p>
+
+              {saveResult.imported > 0 && (
+                <a
+                  href="/admin/productos"
+                  className="btn-secondary"
+                  style={{
+                    display: "inline-flex",
+                    marginTop: 16,
+                    textDecoration: "none",
+                  }}
+                >
+                  REVISAR BORRADORES
+                </a>
+              )}
+            </section>
+          )}
         </>
       )}
     </div>
