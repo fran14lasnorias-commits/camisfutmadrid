@@ -51,12 +51,13 @@ export function YupooCatalogImporter() {
     setSelected([]);
 
     try {
-      const response = await fetch("/api/admin/yupoo-catalog", {
+      const response = await fetch("/api/admin/import", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          mode: "catalog",
           url,
           page,
           limit,
