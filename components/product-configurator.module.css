@@ -116,7 +116,7 @@
 .personalizationLayer {
   position: absolute;
   left: 50%;
-  top: 25.8%;
+  top: 31.5%;
   width: 34%;
   max-width: 235px;
   transform:
@@ -264,7 +264,7 @@
 }
 
 .letteringRetro {
-  top: 27.5%;
+  top: 32.5%;
   width: 35%;
   max-width: 245px;
   --lettering-font: var(--font-retro-style), Impact, sans-serif;
@@ -645,12 +645,12 @@
   }
 
   .personalizationLayer {
-    top: 25.8%;
+    top: 31.5%;
     width: 34%;
   }
 
   .letteringRetro {
-    top: 27.5%;
+    top: 32.5%;
     width: 35%;
   }
 
@@ -701,13 +701,13 @@
   }
 
   .personalizationLayer {
-    top: 26%;
+    top: 31.5%;
     width: 36%;
     max-width: 155px;
   }
 
   .letteringRetro {
-    top: 27.8%;
+    top: 32.5%;
     width: 37%;
     max-width: 165px;
   }
