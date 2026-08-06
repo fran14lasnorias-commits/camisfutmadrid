@@ -84,6 +84,7 @@
   place-items: center;
   overflow: hidden;
   border-radius: 18px;
+  container-type: inline-size;
   background:
     radial-gradient(circle at 50% 42%, rgba(139, 44, 255, .24), transparent 34%),
     linear-gradient(150deg, #1b1b25, #0b0b10 72%);
@@ -115,16 +116,29 @@
 .personalizationLayer {
   position: absolute;
   left: 50%;
-  top: 19%;
-  width: 44%;
-  transform: translateX(-50%);
+  top: 24.2%;
+  width: 27%;
+  max-width: 185px;
+  transform:
+    translateX(-50%)
+    perspective(520px)
+    rotateX(-3deg)
+    scaleX(.94);
+  transform-origin: center top;
   display: grid;
   justify-items: center;
   pointer-events: none;
   text-align: center;
   color: #fff;
+  --lettering-font: var(--font-laliga-style), "Arial Narrow", sans-serif;
+  --lettering-name-weight: 800;
+  --lettering-number-weight: 900;
+  --lettering-name-spacing: .045em;
+  --lettering-number-scale: .94;
+  --lettering-number-skew: 0deg;
   z-index: 3;
-  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, .35));
+  opacity: .96;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .42));
 }
 
 .playerName {
@@ -132,39 +146,147 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-  font-size: clamp(16px, 2.15vw, 31px);
+  font-family: var(--lettering-font);
+  font-size: clamp(12px, 3.1cqw, 21px);
+  font-weight: var(--lettering-name-weight);
   line-height: 1;
-  letter-spacing: .08em;
+  letter-spacing: var(--lettering-name-spacing);
   text-transform: uppercase;
-  -webkit-text-stroke: 1.3px rgba(0, 0, 0, .88);
-  text-shadow:
-    -1px -1px 0 #111,
-    1px -1px 0 #111,
-    -1px 1px 0 #111,
-    1px 1px 0 #111;
+  -webkit-text-stroke: .75px rgba(0, 0, 0, .9);
+  paint-order: stroke fill;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, .58);
 }
 
 .playerNumber {
-  margin-top: 2px;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-  font-size: clamp(58px, 8.8vw, 126px);
-  line-height: .92;
-  letter-spacing: -.035em;
-  -webkit-text-stroke: 2.2px rgba(0, 0, 0, .9);
-  text-shadow:
-    -2px -2px 0 #111,
-    2px -2px 0 #111,
-    -2px 2px 0 #111,
-    2px 2px 0 #111;
+  margin-top: 7px;
+  font-family: var(--lettering-font);
+  font-size: clamp(46px, 11.2cqw, 78px);
+  font-weight: var(--lettering-number-weight);
+  line-height: .82;
+  letter-spacing: -.045em;
+  transform: scaleX(var(--lettering-number-scale)) skewX(var(--lettering-number-skew));
+  transform-origin: center top;
+  -webkit-text-stroke: 1.35px rgba(0, 0, 0, .92);
+  paint-order: stroke fill;
+  text-shadow: 0 2px 2px rgba(0, 0, 0, .48);
+}
+
+/*
+ * Perfiles visuales con tipografías abiertas y autoalojadas por Next.js.
+ * No se presentan como archivos oficiales licenciados de las competiciones.
+ */
+.letteringLaliga {
+  --lettering-font: var(--font-laliga-style), "Arial Narrow", sans-serif;
+  --lettering-name-weight: 800;
+  --lettering-number-weight: 900;
+  --lettering-name-spacing: .065em;
+  --lettering-number-scale: .82;
+  --lettering-number-skew: 0deg;
+}
+
+.letteringLaliga .playerName {
+  font-size: clamp(12px, 2.8cqw, 19px);
+}
+
+.letteringLaliga .playerNumber {
+  margin-top: 5px;
+  font-size: clamp(48px, 11.6cqw, 80px);
+  border-radius: 4px;
+}
+
+.letteringPremier {
+  --lettering-font: var(--font-premier-style), Impact, sans-serif;
+  --lettering-name-weight: 400;
+  --lettering-number-weight: 400;
+  --lettering-name-spacing: .035em;
+  --lettering-number-scale: .76;
+  --lettering-number-skew: 0deg;
+}
+
+.letteringPremier .playerName {
+  font-size: clamp(11px, 2.55cqw, 18px);
+}
+
+.letteringPremier .playerNumber {
+  margin-top: 8px;
+  font-size: clamp(46px, 11cqw, 76px);
+  -webkit-text-stroke-width: 1.15px;
+}
+
+.letteringAdidas {
+  --lettering-font: var(--font-federation-style), "Arial Narrow", sans-serif;
+  --lettering-name-weight: 700;
+  --lettering-number-weight: 700;
+  --lettering-name-spacing: .12em;
+  --lettering-number-scale: .86;
+  --lettering-number-skew: -2deg;
+}
+
+.letteringAdidas .playerName {
+  font-size: clamp(11px, 2.65cqw, 18px);
+}
+
+.letteringAdidas .playerNumber {
+  margin-top: 6px;
+  font-size: clamp(48px, 11.4cqw, 79px);
+}
+
+.letteringNike {
+  --lettering-font: var(--font-retro-style), Impact, sans-serif;
+  --lettering-name-weight: 400;
+  --lettering-number-weight: 400;
+  --lettering-name-spacing: .105em;
+  --lettering-number-scale: .88;
+  --lettering-number-skew: 0deg;
+}
+
+.letteringNike .playerName {
+  font-size: clamp(12px, 2.75cqw, 19px);
+}
+
+.letteringNike .playerNumber {
+  margin-top: 7px;
+  font-size: clamp(50px, 11.7cqw, 82px);
+}
+
+.letteringPuma {
+  --lettering-font: var(--font-federation-style), "Arial Narrow", sans-serif;
+  --lettering-name-weight: 700;
+  --lettering-number-weight: 700;
+  --lettering-name-spacing: .075em;
+  --lettering-number-scale: .78;
+  --lettering-number-skew: -5deg;
+}
+
+.letteringPuma .playerNumber {
+  margin-top: 5px;
+  font-size: clamp(48px, 11.3cqw, 78px);
+}
+
+.letteringRetro {
+  --lettering-font: var(--font-retro-style), Impact, sans-serif;
+  --lettering-name-weight: 400;
+  --lettering-number-weight: 400;
+  --lettering-name-spacing: .055em;
+  --lettering-number-scale: .84;
+  --lettering-number-skew: 0deg;
+}
+
+.letteringRetro .playerNumber {
+  margin-top: 8px;
+  font-size: clamp(48px, 11.5cqw, 80px);
+}
+
+.letteringGeneric {
+  --lettering-font: var(--font-laliga-style), "Arial Narrow", sans-serif;
 }
 
 .patchPreview {
   position: absolute;
-  top: 39%;
-  right: 16%;
-  width: 54px;
-  min-height: 54px;
+  top: 38%;
+  right: 20%;
+  width: 44px;
+  min-height: 44px;
   padding: 7px;
   display: grid;
   place-items: center;
@@ -515,12 +637,12 @@
   }
 
   .personalizationLayer {
-    top: 18.5%;
-    width: 47%;
+    top: 24%;
+    width: 28%;
   }
 
   .patchPreview {
-    right: 14%;
+    right: 19%;
   }
 }
 
@@ -565,17 +687,25 @@
     grid-template-columns: 1fr;
   }
 
+  .personalizationLayer {
+    top: 24.5%;
+    width: 30%;
+    max-width: 135px;
+  }
+
   .playerName {
-    font-size: clamp(14px, 5vw, 24px);
+    font-size: clamp(11px, 3.4cqw, 16px);
   }
 
   .playerNumber {
-    font-size: clamp(50px, 20vw, 90px);
+    margin-top: 5px;
+    font-size: clamp(40px, 11.5cqw, 58px);
   }
 
   .patchPreview {
-    width: 42px;
-    min-height: 42px;
-    font-size: 6px;
+    right: 17%;
+    width: 36px;
+    min-height: 36px;
+    font-size: 5px;
   }
 }
