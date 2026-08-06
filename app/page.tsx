@@ -1,6 +1,43 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ProductCard } from "@/components/product-card";
 import { getPublishedProducts } from "@/lib/catalog";
+
+const SITE_URL = "https://www.camisfutmadrid.com";
+
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: "CamisfutMadrid | Camisetas de fútbol premium",
+  description:
+    "Compra camisetas de fútbol, modelos retro y nueva temporada. Personalización con nombre y dorsal, pago seguro y entrega en Madrid.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "es_ES",
+    url: SITE_URL,
+    siteName: "CamisfutMadrid",
+    title: "CamisfutMadrid | Camisetas de fútbol premium",
+    description:
+      "Camisetas de fútbol, modelos retro y nueva temporada. Personalización, pago seguro y entrega en Madrid.",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "CamisfutMadrid · Camisetas de fútbol premium",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CamisfutMadrid | Camisetas de fútbol premium",
+    description:
+      "Camisetas de fútbol, modelos retro y nueva temporada. Personalización, pago seguro y entrega en Madrid.",
+    images: ["/opengraph-image"],
+  },
+};
 
 export default async function HomePage() {
   const products = await getPublishedProducts();
