@@ -1,4 +1,4 @@
-import { ProductCard } from "@/components/product-card";
+import { CatalogBrowser } from "@/components/catalog-browser";
 import { getPublishedProducts } from "@/lib/catalog";
 
 export default async function CatalogPage() {
@@ -6,11 +6,17 @@ export default async function CatalogPage() {
 
   return (
     <main className="container" style={{ padding: "46px 0 80px" }}>
-      <h1 style={{ fontSize: 46 }}>Catálogo</h1>
-      <p className="muted">{products.length} productos publicados.</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 18, marginTop: 26 }}>
-        {products.map(product => <ProductCard key={product.id} product={product} />)}
-      </div>
+      <span style={{ color: "#d6a6ff", fontWeight: 800 }}>
+        CAMISFUTMADRID
+      </span>
+
+      <h1 style={{ fontSize: 46, marginBottom: 8 }}>Catálogo</h1>
+
+      <p className="muted" style={{ marginTop: 0 }}>
+        Encuentra tu camiseta por equipo, temporada o versión.
+      </p>
+
+      <CatalogBrowser products={products} />
     </main>
   );
 }
