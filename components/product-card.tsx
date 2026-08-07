@@ -4,39 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { Product } from "@/lib/products";
 import { useFavorites } from "@/components/favorites-provider";
-
-const TYPE_LABELS: Record<Product["type"], string> = {
-  fan: "FAN",
-  player: "PLAYER",
-  retro: "RETRO",
-  kids: "NIÑO",
-};
-
-const TYPE_COLORS: Record<
-  Product["type"],
-  { color: string; background: string; border: string }
-> = {
-  fan: {
-    color: "#d8b4ff",
-    background: "rgba(139,44,255,.12)",
-    border: "rgba(195,92,255,.24)",
-  },
-  player: {
-    color: "#9ce6ff",
-    background: "rgba(56,189,248,.10)",
-    border: "rgba(56,189,248,.24)",
-  },
-  retro: {
-    color: "#ffd08a",
-    background: "rgba(255,184,77,.10)",
-    border: "rgba(255,184,77,.24)",
-  },
-  kids: {
-    color: "#8af3b7",
-    background: "rgba(61,222,138,.10)",
-    border: "rgba(61,222,138,.24)",
-  },
-};
+import { PRODUCT_TYPE_BADGES } from "@/lib/product-types";
 
 export function ProductCard({ product }: { product: Product }) {
   const [hovered, setHovered] = useState(false);
@@ -46,7 +14,7 @@ export function ProductCard({ product }: { product: Product }) {
   const primaryImage = product.images[0] || "/placeholder-shirt.svg";
   const secondaryImage = product.images[1] || primaryImage;
   const activeImage = hovered ? secondaryImage : primaryImage;
-  const badge = TYPE_COLORS[product.type];
+  const badge = PRODUCT_TYPE_BADGES[product.type];
   const favorite = hydrated && isFavorite(product.id);
 
   return (
@@ -150,7 +118,7 @@ export function ProductCard({ product }: { product: Product }) {
               backdropFilter: "blur(12px)",
             }}
           >
-            {TYPE_LABELS[product.type]}
+            {badge.label}
           </span>
 
           <span
