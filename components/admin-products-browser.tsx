@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { FormEvent, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AdminProductEditor } from "@/components/admin-product-editor";
 import {
@@ -33,116 +33,102 @@ const TYPE_LABELS: Record<string, string> = {
   kids: "Niño",
   adult_kit: "Kit adulto",
   polo: "Polo",
-  shorts: "Shorts",
-  socks: "Calcetines",
+  shorts: "Pantalón",
+  socks: "Medias",
   training: "Entrenamiento",
-  nba: "NBA",
 };
 
+const ALL_TYPES = [
+  "fan",
+  "player",
+  "retro",
+  "kids",
+  "adult_kit",
+  "polo",
+  "shorts",
+  "socks",
+  "training",
+];
+
 type StatusFilter = "all" | "draft" | "published";
-type SortMode = "newest" | "name" | "team" | "stock";
+type SortMode = "newest" | "name" | "team";
+
+type Props = {
+  products: AdminProduct[];
+  total: number;
+  page: number;
+  totalPages: number;
+  pageSize: number;
+  initialQuery: string;
+  initialStatus: StatusFilter;
+  initialType: string;
+  initialSort: SortMode;
+};
 
 export function AdminProductsBrowser({
   products,
-}: {
-  products: AdminProduct[];
-}) {
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("all");
-  const [type, setType] = useState("all");
-  const [sort, setSort] = useState<SortMode>("newest");
+  total,
+  page,
+  totalPages,
+  pageSize,
+  initialQuery,
+  initialStatus,
+  initialType,
+  initialSort,
+}: Props) {
+  const router = useRouter();
+  const [query, setQuery] = useState(initialQuery);
+  const [status, setStatus] = useState<StatusFilter>(initialStatus);
+  const [type, setType] = useState(initialType);
+  const [sort, setSort] = useState<SortMode>(initialSort);
   const [selected, setSelected] = useState<string[]>([]);
   const [actionMessage, setActionMessage] = useState("");
   const [isPending, startTransition] = useTransition();
-  const router = useRouter();
 
-  const availableTypes = useMemo(
-    () =>
-      Array.from(new Set(products.map((product) => product.type))).sort(
-        (a, b) =>
-          (TYPE_LABELS[a] ?? a).localeCompare(TYPE_LABELS[b] ?? b, "es")
-      ),
-    [products]
-  );
+  const visibleIds = useMemo(() => products.map((product) => product.id), [products]);
 
-  const counts = useMemo(
-    () => ({
-      total: products.length,
-      drafts: products.filter((product) => !product.published).length,
-      published: products.filter((product) => product.published).length,
-    }),
-    [products]
-  );
-
-  const filteredProducts = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase("es");
-
-    const result = products.filter((product) => {
-      const matchesQuery =
-        !normalizedQuery ||
-        [
-          product.name,
-          product.team,
-          product.season ?? "",
-          product.slug,
-          TYPE_LABELS[product.type] ?? product.type,
-        ]
-          .join(" ")
-          .toLocaleLowerCase("es")
-          .includes(normalizedQuery);
-
-      const matchesStatus =
-        status === "all" ||
-        (status === "published" && product.published) ||
-        (status === "draft" && !product.published);
-
-      const matchesType = type === "all" || product.type === type;
-
-      return matchesQuery && matchesStatus && matchesType;
-    });
-
-    return [...result].sort((a, b) => {
-      if (sort === "name") {
-        return a.name.localeCompare(b.name, "es");
-      }
-
-      if (sort === "team") {
-        return (
-          a.team.localeCompare(b.team, "es") ||
-          a.name.localeCompare(b.name, "es")
-        );
-      }
-
-      if (sort === "stock") {
-        const stockA = (a.product_variants ?? []).reduce(
-          (sum, variant) => sum + Number(variant.stock),
-          0
-        );
-        const stockB = (b.product_variants ?? []).reduce(
-          (sum, variant) => sum + Number(variant.stock),
-          0
-        );
-
-        return stockB - stockA;
-      }
-
-      return (
-        new Date(b.created_at ?? 0).getTime() -
-        new Date(a.created_at ?? 0).getTime()
-      );
-    });
-  }, [products, query, status, type, sort]);
-
-  const filtersActive =
-    query.trim() !== "" ||
-    status !== "all" ||
-    type !== "all" ||
-    sort !== "newest";
-
-  const visibleIds = filteredProducts.map((product) => product.id);
   const allVisibleSelected =
     visibleIds.length > 0 &&
     visibleIds.every((id) => selected.includes(id));
+
+  function buildUrl(nextPage = 1) {
+    const params = new URLSearchParams();
+
+    if (query.trim()) params.set("q", query.trim());
+    if (status !== "all") params.set("status", status);
+    if (type !== "all") params.set("type", type);
+    if (sort !== "newest") params.set("sort", sort);
+    if (nextPage > 1) params.set("page", String(nextPage));
+
+    const qs = params.toString();
+    return qs ? `/admin/productos?${qs}` : "/admin/productos";
+  }
+
+  function submitFilters(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSelected([]);
+    startTransition(() => {
+      router.push(buildUrl(1));
+    });
+  }
+
+  function clearFilters() {
+    setQuery("");
+    setStatus("all");
+    setType("all");
+    setSort("newest");
+    setSelected([]);
+    startTransition(() => router.push("/admin/productos"));
+  }
+
+  function goToPage(nextPage: number) {
+    if (nextPage < 1 || nextPage > totalPages || isPending) return;
+    setSelected([]);
+    startTransition(() => {
+      router.push(buildUrl(nextPage));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
 
   function toggleProduct(productId: string) {
     setSelected((current) =>
@@ -190,11 +176,13 @@ export function AdminProductsBrowser({
   function runDeleteAction() {
     if (!selected.length || isPending) return;
 
-    const confirmed = window.confirm(
-      `Vas a eliminar ${selected.length} productos. Esta acción no se puede deshacer.`
-    );
-
-    if (!confirmed) return;
+    if (
+      !window.confirm(
+        `Vas a eliminar ${selected.length} productos de esta página. Esta acción no se puede deshacer.`
+      )
+    ) {
+      return;
+    }
 
     setActionMessage("");
 
@@ -216,14 +204,13 @@ export function AdminProductsBrowser({
     });
   }
 
-
-  function clearFilters() {
-    setQuery("");
-    setStatus("all");
-    setType("all");
-    setSort("newest");
-    setSelected([]);
-  }
+  const firstResult = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastResult = Math.min(page * pageSize, total);
+  const filtersActive =
+    initialQuery !== "" ||
+    initialStatus !== "all" ||
+    initialType !== "all" ||
+    initialSort !== "newest";
 
   return (
     <section style={{ marginTop: 30 }}>
@@ -239,23 +226,18 @@ export function AdminProductsBrowser({
         <div>
           <h2 style={{ marginBottom: 5 }}>Productos existentes</h2>
           <span className="muted">
-            {counts.total} productos · {counts.drafts} borradores ·{" "}
-            {counts.published} publicados
+            Mostrando {firstResult.toLocaleString("es-ES")}–{lastResult.toLocaleString("es-ES")} de{" "}
+            {total.toLocaleString("es-ES")}
           </span>
         </div>
 
-        <div style={{ textAlign: "right" }}>
-          <strong>
-            {filteredProducts.length}{" "}
-            {filteredProducts.length === 1 ? "resultado" : "resultados"}
-          </strong>
-          <span className="muted" style={{ display: "block", marginTop: 4 }}>
-            {selected.length} seleccionados
-          </span>
-        </div>
+        <strong>
+          Página {page} de {totalPages}
+        </strong>
       </div>
 
-      <div
+      <form
+        onSubmit={submitFilters}
         className="card"
         style={{
           display: "grid",
@@ -266,9 +248,8 @@ export function AdminProductsBrowser({
       >
         <div>
           <label htmlFor="admin-product-search" style={labelStyle}>
-            Buscar producto
+            Buscar en todos los productos
           </label>
-
           <input
             id="admin-product-search"
             type="search"
@@ -291,7 +272,6 @@ export function AdminProductsBrowser({
             <label htmlFor="admin-product-status" style={labelStyle}>
               Estado
             </label>
-
             <select
               id="admin-product-status"
               value={status}
@@ -310,7 +290,6 @@ export function AdminProductsBrowser({
             <label htmlFor="admin-product-type" style={labelStyle}>
               Tipo
             </label>
-
             <select
               id="admin-product-type"
               value={type}
@@ -318,9 +297,9 @@ export function AdminProductsBrowser({
               style={inputStyle}
             >
               <option value="all">Todos los tipos</option>
-              {availableTypes.map((item) => (
+              {ALL_TYPES.map((item) => (
                 <option key={item} value={item}>
-                  {TYPE_LABELS[item] ?? item}
+                  {TYPE_LABELS[item]}
                 </option>
               ))}
             </select>
@@ -330,7 +309,6 @@ export function AdminProductsBrowser({
             <label htmlFor="admin-product-sort" style={labelStyle}>
               Ordenar
             </label>
-
             <select
               id="admin-product-sort"
               value={sort}
@@ -342,21 +320,31 @@ export function AdminProductsBrowser({
               <option value="newest">Más recientes</option>
               <option value="name">Nombre A–Z</option>
               <option value="team">Equipo A–Z</option>
-              <option value="stock">Mayor stock</option>
             </select>
           </div>
         </div>
 
-        {filtersActive && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button
-            type="button"
-            className="btn-secondary"
-            onClick={clearFilters}
+            type="submit"
+            className="btn-primary"
+            disabled={isPending}
           >
-            LIMPIAR FILTROS
+            {isPending ? "CARGANDO..." : "BUSCAR / APLICAR FILTROS"}
           </button>
-        )}
-      </div>
+
+          {filtersActive && (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={clearFilters}
+              disabled={isPending}
+            >
+              LIMPIAR FILTROS
+            </button>
+          )}
+        </div>
+      </form>
 
       <div
         className="card"
@@ -388,7 +376,7 @@ export function AdminProductsBrowser({
             disabled={!visibleIds.length || isPending}
             onChange={toggleVisibleProducts}
           />
-          Seleccionar resultados visibles
+          Seleccionar los {products.length} de esta página
         </label>
 
         <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
@@ -398,7 +386,7 @@ export function AdminProductsBrowser({
             disabled={!selected.length || isPending}
             onClick={() => runPublishAction(true)}
           >
-            {isPending ? "PROCESANDO..." : "PUBLICAR"}
+            PUBLICAR
           </button>
 
           <button
@@ -445,16 +433,16 @@ export function AdminProductsBrowser({
         </div>
       )}
 
-      {!filteredProducts.length ? (
+      {!products.length ? (
         <div className="card" style={{ padding: 24, marginTop: 14 }}>
           <strong>No se han encontrado productos.</strong>
           <p className="muted" style={{ marginBottom: 0 }}>
-            Prueba con otro nombre o limpia los filtros.
+            Prueba con otra búsqueda o limpia los filtros.
           </p>
         </div>
       ) : (
         <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
-          {filteredProducts.map((product) => {
+          {products.map((product) => {
             const checked = selected.includes(product.id);
 
             return (
@@ -474,16 +462,9 @@ export function AdminProductsBrowser({
                   aria-label={`Seleccionar ${product.name}`}
                   style={{
                     position: "absolute",
-                    left: 12,
-                    top: 28,
-                    zIndex: 2,
-                    display: "grid",
-                    width: 24,
-                    height: 24,
-                    placeItems: "center",
-                    borderRadius: 7,
-                    background: "#111118",
-                    border: "1px solid var(--border)",
+                    left: 13,
+                    top: 20,
+                    zIndex: 3,
                     cursor: "pointer",
                   }}
                 >
@@ -500,6 +481,44 @@ export function AdminProductsBrowser({
             );
           })}
         </div>
+      )}
+
+      {totalPages > 1 && (
+        <nav
+          aria-label="Paginación de productos"
+          className="card"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10,
+            flexWrap: "wrap",
+            padding: 16,
+            marginTop: 20,
+          }}
+        >
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={page <= 1 || isPending}
+            onClick={() => goToPage(page - 1)}
+          >
+            ← ANTERIOR
+          </button>
+
+          <strong style={{ padding: "0 8px" }}>
+            {page} / {totalPages}
+          </strong>
+
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={page >= totalPages || isPending}
+            onClick={() => goToPage(page + 1)}
+          >
+            SIGUIENTE →
+          </button>
+        </nav>
       )}
     </section>
   );
