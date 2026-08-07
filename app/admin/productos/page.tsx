@@ -3,61 +3,99 @@ import { requireAdmin } from "@/lib/auth";
 import { AdminProductForm } from "@/components/admin-product-form";
 import { AdminProductsBrowser } from "@/components/admin-products-browser";
 
-const PAGE_SIZE = 1000;
-const MAX_ADMIN_PRODUCTS = 10_000;
+const PAGE_SIZE = 50;
 
-async function loadAllProducts(supabase: any) {
-  const products: any[] = [];
+type SearchParams = {
+  page?: string;
+  q?: string;
+  status?: string;
+  type?: string;
+  sort?: string;
+};
 
-  for (
-    let from = 0;
-    from < MAX_ADMIN_PRODUCTS;
-    from += PAGE_SIZE
-  ) {
-    const to = from + PAGE_SIZE - 1;
+function safePage(value?: string) {
+  const parsed = Number(value ?? 1);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1;
+}
 
-    const { data, error } = await supabase
-      .from("products")
-      .select(`
+function safeSearch(value?: string) {
+  return String(value ?? "")
+    .trim()
+    .slice(0, 80)
+    .replace(/[,%()]/g, " ");
+}
+
+export default async function AdminProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const { supabase } = await requireAdmin();
+  const params = await searchParams;
+
+  const page = safePage(params.page);
+  const q = safeSearch(params.q);
+  const status =
+    params.status === "published" || params.status === "draft"
+      ? params.status
+      : "all";
+  const type = safeSearch(params.type) || "all";
+  const sort =
+    params.sort === "name" || params.sort === "team"
+      ? params.sort
+      : "newest";
+
+  let query = supabase
+    .from("products")
+    .select(
+      `
         id,name,slug,team,season,type,price_eur,original_price_eur,supplier_cost_usd,
         description,supplier_url,published,created_at,
         product_images(url,position),
         product_variants(size,stock)
-      `)
-      .order("created_at", { ascending: false })
-      .range(from, to);
+      `,
+      { count: "exact" }
+    );
 
-    if (error) {
-      throw new Error(`No se pudieron cargar los productos: ${error.message}`);
-    }
-
-    const batch = data ?? [];
-    products.push(...batch);
-
-    if (batch.length < PAGE_SIZE) break;
-  }
-
-  return products;
-}
-
-export default async function AdminProductsPage() {
-  const { supabase } = await requireAdmin();
-
-  const [
-    products,
-    { count: totalCount, error: countError },
-  ] = await Promise.all([
-    loadAllProducts(supabase),
-    supabase
-      .from("products")
-      .select("*", { count: "exact", head: true }),
-  ]);
-
-  if (countError) {
-    throw new Error(
-      `No se pudo contar el total de productos: ${countError.message}`
+  if (q) {
+    const search = `%${q}%`;
+    query = query.or(
+      `name.ilike.${search},team.ilike.${search},slug.ilike.${search},season.ilike.${search}`
     );
   }
+
+  if (status === "published") {
+    query = query.eq("published", true);
+  } else if (status === "draft") {
+    query = query.eq("published", false);
+  }
+
+  if (type !== "all") {
+    query = query.eq("type", type);
+  }
+
+  if (sort === "name") {
+    query = query.order("name", { ascending: true });
+  } else if (sort === "team") {
+    query = query
+      .order("team", { ascending: true })
+      .order("name", { ascending: true });
+  } else {
+    query = query.order("created_at", { ascending: false });
+  }
+
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
+  const { data: products, count, error } = await query.range(from, to);
+
+  if (error) {
+    throw new Error(`No se pudieron cargar los productos: ${error.message}`);
+  }
+
+  const total = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
 
   return (
     <main className="container" style={{ padding: "46px 0 80px" }}>
@@ -75,11 +113,8 @@ export default async function AdminProductsPage() {
             ADMINISTRACIÓN
           </span>
           <h1 style={{ marginBottom: 0 }}>Productos</h1>
-          <p className="muted" style={{ marginTop: 8 }}>
-            {Number(totalCount ?? products.length).toLocaleString("es-ES")} productos totales
-            {products.length < Number(totalCount ?? products.length)
-              ? ` · mostrando los primeros ${products.length.toLocaleString("es-ES")}`
-              : ""}
+          <p className="muted" style={{ margin: "8px 0 0" }}>
+            {total.toLocaleString("es-ES")} productos encontrados · 50 por página
           </p>
         </div>
 
@@ -96,7 +131,17 @@ export default async function AdminProductsPage() {
 
       <AdminProductForm />
 
-      <AdminProductsBrowser products={products as any} />
+      <AdminProductsBrowser
+        products={(products ?? []) as any}
+        total={total}
+        page={currentPage}
+        totalPages={totalPages}
+        pageSize={PAGE_SIZE}
+        initialQuery={q}
+        initialStatus={status}
+        initialType={type}
+        initialSort={sort}
+      />
     </main>
   );
 }
