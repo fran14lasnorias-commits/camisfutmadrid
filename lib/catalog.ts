@@ -16,6 +16,17 @@ type ProductRow = {
   product_variants?: Array<{ size: string; stock: number }> | null;
 };
 
+export type CatalogQuery = {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  team?: string;
+  season?: string;
+  type?: Product["type"] | null;
+  teams?: string[];
+  sort?: "newest" | "price_asc" | "price_desc" | "name";
+};
+
 function orderedImages(
   images: Array<{ url: string; position: number }> | null | undefined
 ) {
@@ -36,18 +47,16 @@ function orderedSizes(
   return [...(variants ?? [])]
     .filter((variant) => Number(variant.stock) > 0)
     .sort((a, b) => {
-      const aIndex = order.indexOf(a.size);
-      const bIndex = order.indexOf(b.size);
-      return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+      const ai = order.indexOf(a.size);
+      const bi = order.indexOf(b.size);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
     })
     .map((variant) => variant.size);
 }
 
 function mapProduct(row: ProductRow, includeRealSizes = false): Product {
   const images = orderedImages(row.product_images);
-  const sizes = includeRealSizes
-    ? orderedSizes(row.product_variants)
-    : [];
+  const sizes = includeRealSizes ? orderedSizes(row.product_variants) : [];
 
   return {
     id: row.id,
@@ -66,8 +75,6 @@ function mapProduct(row: ProductRow, includeRealSizes = false): Product {
     images: images.length
       ? images
       : ["/placeholder-shirt.svg", "/placeholder-shirt-back.svg"],
-    // Las listas públicas no necesitan descargar miles de filas de stock.
-    // Las tallas reales se cargan únicamente en la ficha del producto.
     sizes: sizes.length
       ? sizes
       : row.type === "kids"
@@ -101,6 +108,13 @@ function hasSupabaseConfig() {
   );
 }
 
+function cleanSearch(value?: string) {
+  return String(value ?? "")
+    .trim()
+    .slice(0, 80)
+    .replace(/[,%()]/g, " ");
+}
+
 export async function getPublishedProducts(
   options: { limit?: number } = {}
 ): Promise<Product[]> {
@@ -111,16 +125,14 @@ export async function getPublishedProducts(
   }
 
   const supabase = await createClient();
-
   let query = supabase
     .from("products")
     .select(listProductSelect)
     .eq("published", true)
     .order("created_at", { ascending: false });
 
-  if (options.limit) {
-    query = query.limit(options.limit);
-  }
+  // Evita que una página accidentalmente descargue miles de productos.
+  query = query.limit(Math.min(options.limit ?? 120, 250));
 
   const { data, error } = await query;
 
@@ -131,6 +143,107 @@ export async function getPublishedProducts(
   }
 
   return (data as ProductRow[]).map((row) => mapProduct(row, false));
+}
+
+export async function getPublishedProductsPage(
+  options: CatalogQuery = {}
+): Promise<{
+  products: Product[];
+  count: number;
+  page: number;
+  pageSize: number;
+}> {
+  const pageSize = Math.min(Math.max(options.pageSize ?? 48, 12), 60);
+  const requestedPage = Math.max(1, Math.floor(options.page ?? 1));
+  const q = cleanSearch(options.q);
+  const team = cleanSearch(options.team);
+  const season = cleanSearch(options.season);
+
+  if (!hasSupabaseConfig()) {
+    let rows = [...fallbackProducts];
+
+    if (q) {
+      const value = q.toLocaleLowerCase("es");
+      rows = rows.filter((item) =>
+        `${item.name} ${item.team} ${item.season}`
+          .toLocaleLowerCase("es")
+          .includes(value)
+      );
+    }
+    if (team) rows = rows.filter((item) => item.team === team);
+    if (season) rows = rows.filter((item) => item.season === season);
+    if (options.type) rows = rows.filter((item) => item.type === options.type);
+    if (options.teams?.length) {
+      const allowed = new Set(options.teams.map((item) => item.toLocaleLowerCase("es")));
+      rows = rows.filter((item) => allowed.has(item.team.toLocaleLowerCase("es")));
+    }
+
+    const count = rows.length;
+    const from = (requestedPage - 1) * pageSize;
+    return {
+      products: rows.slice(from, from + pageSize),
+      count,
+      page: requestedPage,
+      pageSize,
+    };
+  }
+
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("products")
+    .select(listProductSelect, { count: "exact" })
+    .eq("published", true);
+
+  if (q) {
+    const search = `%${q}%`;
+    query = query.or(
+      `name.ilike.${search},team.ilike.${search},slug.ilike.${search},season.ilike.${search}`
+    );
+  }
+
+  if (team) query = query.eq("team", team);
+  if (season) query = query.eq("season", season);
+  if (options.type) query = query.eq("type", options.type);
+
+  if (options.teams?.length) {
+    query = query.in("team", options.teams);
+  }
+
+  switch (options.sort) {
+    case "price_asc":
+      query = query.order("price_eur", { ascending: true });
+      break;
+    case "price_desc":
+      query = query.order("price_eur", { ascending: false });
+      break;
+    case "name":
+      query = query.order("name", { ascending: true });
+      break;
+    default:
+      query = query.order("created_at", { ascending: false });
+  }
+
+  const from = (requestedPage - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const { data, count, error } = await query.range(from, to);
+
+  if (error || !data) {
+    return {
+      products: [],
+      count: 0,
+      page: requestedPage,
+      pageSize,
+    };
+  }
+
+  return {
+    products: (data as ProductRow[]).map((row) => mapProduct(row, false)),
+    count: count ?? 0,
+    page: requestedPage,
+    pageSize,
+  };
 }
 
 export async function getPublishedProductBySlug(
