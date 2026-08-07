@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/components/cart-provider";
 import { createClient } from "@/lib/supabase/client";
+import { GlobalProductSearch } from "@/components/global-product-search";
 
 const NAV_ITEMS = [
   { href: "/catalogo", label: "Catálogo" },
@@ -21,6 +22,7 @@ export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -129,14 +131,18 @@ export function Header() {
         </nav>
 
         <div className="actions">
-          <Link
-            href="/catalogo"
+          <button
+            type="button"
             className="iconButton"
             aria-label="Buscar productos"
             title="Buscar"
+            onClick={() => {
+              setMenuOpen(false);
+              setSearchOpen(true);
+            }}
           >
             <SearchIcon />
-          </Link>
+          </button>
 
           <Link
             href="/cuenta"
@@ -203,6 +209,11 @@ export function Header() {
           </div>
         </div>
       )}
+
+      <GlobalProductSearch
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+      />
 
       <style jsx>{`
         .header {
@@ -391,6 +402,9 @@ export function Header() {
         }
 
         .iconButton {
+          appearance: none;
+          padding: 0;
+          cursor: pointer;
           display: grid;
           width: 42px;
           height: 42px;
