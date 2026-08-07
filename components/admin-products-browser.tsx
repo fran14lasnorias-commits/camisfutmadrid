@@ -16,6 +16,7 @@ type AdminProduct = {
   season: string | null;
   type: string;
   price_eur: number;
+  original_price_eur: number | null;
   supplier_cost_usd: number;
   description: string | null;
   supplier_url: string | null;
