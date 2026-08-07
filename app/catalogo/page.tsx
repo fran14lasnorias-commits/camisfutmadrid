@@ -16,7 +16,7 @@ const ALLOWED_TYPES: Product["type"][] = [
   "training",
 ];
 
-const NATIONAL_TEAMS = [
+const NATIONAL_TEAM_TERMS = [
   "España","Spain","Argentina","Brasil","Brazil","Francia","France",
   "Alemania","Germany","Portugal","Inglaterra","England","Italia","Italy",
   "Países Bajos","Netherlands","Holland","Bélgica","Belgium","Croacia","Croatia",
@@ -33,7 +33,7 @@ const NATIONAL_TEAMS = [
   "Grecia","Greece","República Checa","Czech","Hungría","Hungary",
 ];
 
-const LALIGA_TEAMS = [
+const LALIGA_TEAM_TERMS = [
   "Real Madrid","Barcelona","FC Barcelona","Atletico Madrid","Atlético Madrid",
   "Atlético de Madrid","Athletic Club","Athletic Bilbao","Real Betis","Betis",
   "Sevilla","Valencia","Villarreal","Real Sociedad","Celta Vigo","Celta",
@@ -48,9 +48,9 @@ function categoryTitle(category?: string) {
   return "Catálogo";
 }
 
-function categoryTeams(category?: string) {
-  if (category === "selecciones") return NATIONAL_TEAMS;
-  if (category === "laliga") return LALIGA_TEAMS;
+function categoryMatchTerms(category?: string) {
+  if (category === "selecciones") return NATIONAL_TEAM_TERMS;
+  if (category === "laliga") return LALIGA_TEAM_TERMS;
   return undefined;
 }
 
@@ -96,7 +96,7 @@ export default async function CatalogPage({
     team: params.team,
     season: params.season,
     type,
-    teams: categoryTeams(category),
+    matchTerms: categoryMatchTerms(category),
     sort,
   });
 
