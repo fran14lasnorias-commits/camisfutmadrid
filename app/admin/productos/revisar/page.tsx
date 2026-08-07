@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { AdminProductEditor } from "@/components/admin-product-editor";
+import { CleanProductTitlesButton } from "@/components/clean-product-titles-button";
+import { cleanProductTitle } from "@/lib/product-title-cleaner";
 
 type ReviewProduct = {
   id: string;
@@ -26,7 +28,7 @@ type ReviewedProduct = {
 };
 
 const SIZE_PATTERN =
-  /\b(?:XS|S|M|L|XL|XXL|2XL|3XL|4XL|5XL)\s*[-–]\s*(?:XL|XXL|2XL|3XL|4XL|5XL)\b/i;
+  /\b(?:XS|S|M|L|XL|XXL|2XL|3XL|4XL|5XL)\s*[-–—]\s*(?:XS|S|M|L|XL|XXL|2XL|3XL|4XL|5XL)\b/i;
 
 const LONG_CODE_PATTERN = /\d{10,}/;
 
@@ -44,7 +46,6 @@ function normalizeName(value: string) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase("es")
-    .replace(/\b(local|visitante|tercera|fan|player|retro)\b/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -76,6 +77,11 @@ function reviewProduct(
     }
   }
 
+  if (cleanProductTitle(product.name) !== product.name.trim()) {
+    reasons.push("Título susceptible de limpieza automática");
+    severity += 3;
+  }
+
   if (product.name.length > 78) {
     reasons.push("Nombre demasiado largo");
     severity += 2;
@@ -98,7 +104,7 @@ function reviewProduct(
 
   if (
     product.season &&
-    !/^(?:19|20)\d{2}\/\d{2}$/.test(product.season.trim())
+    !/^(?:19|20)\d{2}(?:\/\d{2})?$/.test(product.season.trim())
   ) {
     reasons.push("Temporada con formato incorrecto");
     severity += 2;
@@ -150,7 +156,6 @@ export default async function ProductsReviewPage() {
   }
 
   const products = (data ?? []) as ReviewProduct[];
-
   const nameCounts = new Map<string, number>();
 
   for (const product of products) {
@@ -208,14 +213,26 @@ export default async function ProductsReviewPage() {
           <p className="muted" style={{ maxWidth: 760, lineHeight: 1.65 }}>
             Aquí aparecen productos con nombres sospechosos, códigos del
             proveedor, tallas dentro del título, equipo mal identificado,
-            fotografías ausentes o posibles duplicados. Nada se modifica de
-            forma automática.
+            fotografías ausentes o posibles duplicados. Puedes corregir
+            automáticamente el texto basura de los títulos sin modificar fotos,
+            precios, stock ni variantes.
           </p>
         </div>
 
-        <Link href="/admin/productos" className="btn-secondary">
-          VOLVER A PRODUCTOS
-        </Link>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 10,
+            flexWrap: "wrap",
+          }}
+        >
+          <CleanProductTitlesButton />
+
+          <Link href="/admin/productos" className="btn-secondary">
+            VOLVER A PRODUCTOS
+          </Link>
+        </div>
       </div>
 
       <section
