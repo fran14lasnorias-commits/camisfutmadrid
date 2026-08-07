@@ -16,6 +16,14 @@ export function ProductCard({ product }: { product: Product }) {
   const activeImage = hovered ? secondaryImage : primaryImage;
   const badge = PRODUCT_TYPE_BADGES[product.type];
   const favorite = hydrated && isFavorite(product.id);
+  const onSale =
+    typeof product.originalPrice === "number" &&
+    product.originalPrice > product.price;
+  const discountPercent = onSale
+    ? Math.round(
+        ((product.originalPrice! - product.price) / product.originalPrice!) * 100
+      )
+    : 0;
 
   return (
     <article
@@ -120,6 +128,29 @@ export function ProductCard({ product }: { product: Product }) {
           >
             {badge.label}
           </span>
+
+          {onSale && (
+            <span
+              style={{
+                position: "absolute",
+                top: 50,
+                left: 14,
+                zIndex: 4,
+                display: "inline-flex",
+                padding: "6px 9px",
+                borderRadius: 999,
+                background: "rgba(255,72,105,.16)",
+                border: "1px solid rgba(255,72,105,.34)",
+                color: "#ff9aaa",
+                fontSize: 11,
+                fontWeight: 900,
+                letterSpacing: ".06em",
+                backdropFilter: "blur(12px)",
+              }}
+            >
+              OFERTA · -{discountPercent}%
+            </span>
+          )}
 
           <span
             aria-hidden="true"
@@ -278,9 +309,24 @@ export function ProductCard({ product }: { product: Product }) {
                 Desde
               </span>
 
+              {onSale && (
+                <span
+                  style={{
+                    display: "block",
+                    marginBottom: 4,
+                    color: "#777783",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textDecoration: "line-through",
+                  }}
+                >
+                  {product.originalPrice!.toFixed(2).replace(".", ",")} €
+                </span>
+              )}
+
               <strong
                 style={{
-                  color: "var(--purple-2)",
+                  color: onSale ? "#ff8aa8" : "var(--purple-2)",
                   fontFamily: "var(--font-display)",
                   fontSize: 27,
                   lineHeight: 1,
