@@ -504,11 +504,15 @@ export function CatalogBrowser({
             }}
           >
             <option value="Todos">Todos los tipos</option>
-            {PRODUCT_TYPE_FILTER_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
+            {PRODUCT_TYPE_FILTER_OPTIONS
+              .filter((option) =>
+                ["fan", "player", "retro"].includes(option.value)
+              )
+              .map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
           </FilterSelect>
 
           <FilterSelect
