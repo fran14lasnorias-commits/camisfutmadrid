@@ -46,26 +46,57 @@ const CATEGORY_LINKS = [
     title: "26/27",
     description: "Los nuevos diseños antes que nadie.",
     href: "/catalogo?season=2026%2F27",
+    key: "new",
   },
   {
     eyebrow: "CLUBES",
     title: "LALIGA",
     description: "Madrid, Barça, Atlético y mucho más.",
     href: "/catalogo",
+    key: "laliga",
   },
   {
     eyebrow: "MUNDIAL",
     title: "SELECCIONES",
     description: "Prepárate para vivir cada partido.",
     href: "/catalogo?team=selecciones",
+    key: "national",
   },
   {
     eyebrow: "HISTORIA",
     title: "RETRO",
     description: "Camisetas que nunca pasan de moda.",
     href: "/catalogo?type=retro",
+    key: "retro",
   },
 ];
+
+
+const LALIGA_TEAMS = new Set([
+  "Real Madrid",
+  "Barcelona",
+  "Atlético de Madrid",
+  "Athletic Club",
+  "UD Almería",
+  "Sevilla",
+  "Valencia",
+  "Real Betis",
+]);
+
+const NATIONAL_TEAMS = new Set([
+  "España",
+  "Argentina",
+  "Brasil",
+  "Francia",
+  "Alemania",
+  "Portugal",
+  "Inglaterra",
+  "Italia",
+  "Países Bajos",
+  "Japón",
+  "México",
+  "Estados Unidos",
+]);
 
 const BENEFITS = [
   {
@@ -86,6 +117,22 @@ export default async function HomePage() {
   const products = await getPublishedProducts();
   const featured = products[0];
   const secondaryFeatured = products[1] ?? featured;
+
+  const categoryCards = CATEGORY_LINKS.map((category) => {
+    const product =
+      category.key === "new"
+        ? products.find((item) => item.season?.includes("2026/27"))
+        : category.key === "laliga"
+          ? products.find((item) => LALIGA_TEAMS.has(item.team))
+          : category.key === "national"
+            ? products.find((item) => NATIONAL_TEAMS.has(item.team))
+            : products.find((item) => item.type === "retro");
+
+    return {
+      ...category,
+      product: product ?? featured,
+    };
+  });
 
   return (
     <main style={{ overflow: "hidden" }}>
@@ -386,7 +433,7 @@ export default async function HomePage() {
             marginTop: 28,
           }}
         >
-          {CATEGORY_LINKS.map((category, index) => (
+          {categoryCards.map((category, index) => (
             <Link
               key={category.title}
               href={category.href}
@@ -407,6 +454,22 @@ export default async function HomePage() {
                     : "radial-gradient(circle at 15% 10%, rgba(195,92,255,.22), transparent 18rem), #111116",
               }}
             >
+              {category.product && (
+                <img
+                  src={
+                    category.product.images[0] ||
+                    "/placeholder-shirt.svg"
+                  }
+                  alt=""
+                  aria-hidden="true"
+                  className={motionStyles.categoryImage}
+                />
+              )}
+
+              <div
+                className={motionStyles.categoryShade}
+                aria-hidden="true"
+              />
               <div
                 aria-hidden="true"
                 style={{
@@ -419,11 +482,12 @@ export default async function HomePage() {
                 }}
               />
 
-              <span
-                style={{
-                  position: "relative",
-                  zIndex: 1,
-                  color: "#d6a6ff",
+              <div className={motionStyles.categoryContent}>
+                <span
+                  style={{
+                    position: "relative",
+                    zIndex: 1,
+                    color: "#d6a6ff",
                   fontSize: 11,
                   fontWeight: 900,
                   letterSpacing: ".14em",
@@ -461,6 +525,7 @@ export default async function HomePage() {
                 <span className={motionStyles.categoryArrow} style={{ color: "var(--purple-2)", fontWeight: 900 }}>
                   VER →
                 </span>
+              </div>
               </div>
             </Link>
           ))}
