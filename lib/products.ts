@@ -18,6 +18,7 @@ export type Product = {
   season: string;
   type: ProductType;
   price: number;
+  originalPrice?: number;
   costUsd: number;
   images: string[];
   sizes: string[];
@@ -32,6 +33,7 @@ export const products: Product[] = [
     season: "2026/27",
     type: "fan",
     price: 25,
+    originalPrice: 30,
     costUsd: 10,
     images: [
       "/placeholder-shirt.svg",
