@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ProductCard } from "@/components/product-card";
 import { getPublishedProducts } from "@/lib/catalog";
+import motionStyles from "./home.module.css";
 
 const SITE_URL = "https://www.camisfutmadrid.com";
 
@@ -125,8 +126,9 @@ export default async function HomePage() {
             padding: "clamp(54px,8vw,104px) 0",
           }}
         >
-          <div>
+          <div className={motionStyles.heroContent}>
             <span
+              className={motionStyles.heroBadge}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -155,6 +157,7 @@ export default async function HomePage() {
             </span>
 
             <h1
+              className={motionStyles.heroTitle}
               style={{
                 maxWidth: 760,
                 margin: "24px 0 20px",
@@ -178,7 +181,7 @@ export default async function HomePage() {
             </h1>
 
             <p
-              className="muted"
+              className={`muted ${motionStyles.heroText}`}
               style={{
                 maxWidth: 620,
                 margin: 0,
@@ -192,6 +195,7 @@ export default async function HomePage() {
             </p>
 
             <div
+              className={motionStyles.heroActions}
               style={{
                 display: "flex",
                 gap: 12,
@@ -214,6 +218,7 @@ export default async function HomePage() {
             </div>
 
             <div
+              className={motionStyles.heroStats}
               style={{
                 display: "flex",
                 gap: 24,
@@ -233,6 +238,7 @@ export default async function HomePage() {
             <Link
               href={`/producto/${featured.slug}`}
               aria-label={`Ver ${featured.name}`}
+              className={motionStyles.featuredCard}
               style={{
                 position: "relative",
                 minHeight: 580,
@@ -269,6 +275,7 @@ export default async function HomePage() {
 
               <div
                 aria-hidden="true"
+                className={motionStyles.glowPulse}
                 style={{
                   position: "absolute",
                   width: "72%",
@@ -283,6 +290,7 @@ export default async function HomePage() {
               <img
                 src={featured.images[0] || "/placeholder-shirt.svg"}
                 alt={featured.name}
+                className={motionStyles.featuredImage}
                 style={{
                   position: "relative",
                   zIndex: 1,
@@ -349,7 +357,7 @@ export default async function HomePage() {
             </Link>
           ) : (
             <div
-              className="card"
+              className={`card ${motionStyles.benefitCard}`}
               style={{
                 minHeight: 580,
                 display: "grid",
@@ -363,7 +371,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="container" style={{ padding: "78px 0 22px" }}>
+      <section className={`container ${motionStyles.sectionReveal}`} style={{ padding: "78px 0 22px" }}>
         <SectionHeader
           eyebrow="ENCUENTRA LA TUYA"
           title="COMPRA POR CATEGORÍA"
@@ -382,6 +390,7 @@ export default async function HomePage() {
             <Link
               key={category.title}
               href={category.href}
+              className={motionStyles.categoryCard}
               style={{
                 position: "relative",
                 minHeight: index === 0 || index === 3 ? 300 : 250,
@@ -449,7 +458,7 @@ export default async function HomePage() {
                 }}
               >
                 <span className="muted">{category.description}</span>
-                <span style={{ color: "var(--purple-2)", fontWeight: 900 }}>
+                <span className={motionStyles.categoryArrow} style={{ color: "var(--purple-2)", fontWeight: 900 }}>
                   VER →
                 </span>
               </div>
@@ -458,7 +467,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="container" style={{ padding: "82px 0 30px" }}>
+      <section className={`container ${motionStyles.sectionReveal}`} style={{ padding: "82px 0 30px" }}>
         <SectionHeader
           eyebrow="LO QUE MÁS GUSTA"
           title="MÁS VENDIDAS"
@@ -478,6 +487,7 @@ export default async function HomePage() {
         />
 
         <div
+          className={motionStyles.productGrid}
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))",
@@ -492,8 +502,9 @@ export default async function HomePage() {
       </section>
 
       {secondaryFeatured && (
-        <section className="container" style={{ padding: "78px 0 20px" }}>
+        <section className={`container ${motionStyles.sectionReveal}`} style={{ padding: "78px 0 20px" }}>
           <div
+            className={motionStyles.personalizationCard}
             style={{
               position: "relative",
               minHeight: 450,
@@ -559,6 +570,7 @@ export default async function HomePage() {
                 "/placeholder-shirt-back.svg"
               }
               alt={`${secondaryFeatured.name}, vista trasera`}
+              className={motionStyles.personalizationImage}
               style={{
                 width: "100%",
                 height: 390,
@@ -570,7 +582,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      <section className="container" style={{ padding: "88px 0 26px" }}>
+      <section className={`container ${motionStyles.sectionReveal}`} style={{ padding: "88px 0 26px" }}>
         <SectionHeader
           eyebrow="COMPRA CON CONFIANZA"
           title="POR QUÉ CAMISFUTMADRID"
@@ -588,7 +600,7 @@ export default async function HomePage() {
           {BENEFITS.map((benefit, index) => (
             <article
               key={benefit.title}
-              className="card"
+              className={`card ${motionStyles.benefitCard}`}
               style={{
                 minHeight: 220,
                 padding: 26,
@@ -625,8 +637,9 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="container" style={{ padding: "88px 0 96px" }}>
+      <section className={`container ${motionStyles.sectionReveal}`} style={{ padding: "88px 0 96px" }}>
         <div
+          className={motionStyles.ctaCard}
           style={{
             position: "relative",
             overflow: "hidden",
