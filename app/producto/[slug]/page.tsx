@@ -8,19 +8,13 @@ import {
   getPublishedProducts,
 } from "@/lib/catalog";
 import type { Product } from "@/lib/products";
+import { PRODUCT_TYPE_LABELS } from "@/lib/product-types";
 
 const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL || "https://www.camisfutmadrid.com"
 ).replace(/\/$/, "");
 
 const getProduct = cache(getPublishedProductBySlug);
-
-const TYPE_LABELS: Record<Product["type"], string> = {
-  fan: "versión fan",
-  player: "versión player",
-  retro: "estilo retro",
-  kids: "versión infantil",
-};
 
 function absoluteUrl(value: string) {
   if (/^https?:\/\//i.test(value)) return value;
@@ -30,7 +24,7 @@ function absoluteUrl(value: string) {
 function productDescription(product: Product) {
   const season = product.season ? ` de la temporada ${product.season}` : "";
 
-  return `${product.name}: camiseta de fútbol ${TYPE_LABELS[product.type]} de ${product.team}${season}. Disponible en varias tallas, personalizable con nombre, dorsal y parche. Pago seguro y entrega en Madrid.`;
+  return `${product.name}: camiseta de fútbol ${PRODUCT_TYPE_LABELS[product.type].toLocaleLowerCase("es")} de ${product.team}${season}. Disponible en varias tallas, personalizable con nombre, dorsal y parche. Pago seguro y entrega en Madrid.`;
 }
 
 function chooseRelatedProducts(
