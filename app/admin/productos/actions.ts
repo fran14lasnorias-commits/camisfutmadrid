@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { ProductAdminSchema } from "@/lib/admin-products";
+import {
+  cleanProductTitle,
+  createProductSlug,
+} from "@/lib/product-title-cleaner";
 
 const ProductIdsSchema = z
   .array(z.string().uuid())
@@ -27,6 +31,7 @@ function refreshProductPages() {
   revalidatePath("/catalogo");
   revalidatePath("/admin");
   revalidatePath("/admin/productos");
+  revalidatePath("/admin/productos/revisar");
   revalidatePath("/admin/stock");
 }
 
@@ -34,11 +39,14 @@ export async function createProduct(input: unknown) {
   const parsed = ProductAdminSchema.parse(input);
   const { supabase } = await requireAdmin();
 
+  const cleanName = cleanProductTitle(parsed.name);
+  const cleanSlug = createProductSlug(cleanName) || parsed.slug;
+
   const { data: product, error } = await supabase
     .from("products")
     .insert({
-      slug: parsed.slug,
-      name: parsed.name,
+      slug: cleanSlug,
+      name: cleanName,
       team: parsed.team,
       season: parsed.season || null,
       type: parsed.type,
@@ -91,11 +99,14 @@ export async function updateProduct(productId: string, input: unknown) {
   const id = z.string().uuid().parse(productId);
   const { supabase } = await requireAdmin();
 
+  const cleanName = cleanProductTitle(parsed.name);
+  const cleanSlug = createProductSlug(cleanName) || parsed.slug;
+
   const { error } = await supabase
     .from("products")
     .update({
-      slug: parsed.slug,
-      name: parsed.name,
+      slug: cleanSlug,
+      name: cleanName,
       team: parsed.team,
       season: parsed.season || null,
       type: parsed.type,
@@ -151,6 +162,78 @@ export async function updateProduct(productId: string, input: unknown) {
   if (variantError) throw new Error(variantError.message);
 
   refreshProductPages();
+}
+
+export async function cleanAllProductTitles() {
+  const { supabase } = await requireAdmin();
+
+  const { data, error } = await supabase
+    .from("products")
+    .select("id,name,slug")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw new Error(`No se pudieron leer los productos: ${error.message}`);
+  }
+
+  const products = data ?? [];
+  const usedSlugs = new Map<string, string>();
+
+  for (const product of products) {
+    if (product.slug) usedSlugs.set(product.slug, product.id);
+  }
+
+  let updated = 0;
+  const examples: Array<{ before: string; after: string }> = [];
+
+  for (const product of products) {
+    const cleanName = cleanProductTitle(product.name);
+    let cleanSlug = createProductSlug(cleanName) || product.slug;
+
+    const ownerId = usedSlugs.get(cleanSlug);
+    if (ownerId && ownerId !== product.id) {
+      cleanSlug = `${cleanSlug}-${product.id.slice(0, 8)}`;
+    }
+
+    if (cleanName === product.name && cleanSlug === product.slug) {
+      continue;
+    }
+
+    const { error: updateError } = await supabase
+      .from("products")
+      .update({
+        name: cleanName,
+        slug: cleanSlug,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", product.id);
+
+    if (updateError) {
+      throw new Error(
+        `No se pudo limpiar “${product.name}”: ${updateError.message}`
+      );
+    }
+
+    usedSlugs.delete(product.slug);
+    usedSlugs.set(cleanSlug, product.id);
+    updated += 1;
+
+    if (examples.length < 8) {
+      examples.push({
+        before: product.name,
+        after: cleanName,
+      });
+    }
+  }
+
+  refreshProductPages();
+
+  return {
+    analyzed: products.length,
+    updated,
+    unchanged: products.length - updated,
+    examples,
+  };
 }
 
 export async function deleteProduct(productId: string) {
