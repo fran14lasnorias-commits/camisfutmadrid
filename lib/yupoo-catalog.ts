@@ -42,13 +42,10 @@ export type YupooCatalogBatch = {
 };
 
 const EXCLUDED_PATTERNS: Array<[RegExp, string]> = [
-  [/\b(baby|babies|infant)\b/i, "Producto para bebé"],
-  [/\b(kids?|children|youth)\b/i, "Producto infantil"],
-  [/\b(women|woman|ladies|crop\s*top|vest)\b/i, "Modelo de mujer"],
-  [/\b(shorts?|socks?)\b/i, "No es una camiseta"],
-  [/\b(pre[-\s]?match|warm[-\s]?up|training|tracksuit|windbreaker|jacket|coat|hoodie|down\s*jacket|thermal)\b/i, "Prenda prepartido, entrenamiento o abrigo"],
-  [/\b(polo|t-?shirt)\b/i, "Polo o camiseta casual"],
-  [/\b(jewellery|jewelry|nba|rugby|f1)\b/i, "Categoría distinta de fútbol"],
+  [
+    /\b(nba|basketball|lakers|celtics|warriors|bulls|knicks|nets|76ers|sixers|raptors|bucks|cavaliers|cavs|pacers|pistons|heat|magic|hawks|hornets|wizards|nuggets|timberwolves|thunder|trail\s*blazers|blazers|jazz|clippers|suns|kings|mavericks|mavs|rockets|grizzlies|pelicans|spurs)\b/i,
+    "Producto NBA o baloncesto",
+  ],
 ];
 
 function decodeHtml(value: string) {
@@ -81,6 +78,8 @@ function cleanAlbumTitle(value: string) {
     .replace(/\(\s*without\s+sponsors?\s*\)/gi, "")
     .replace(/\bwithout\s+sponsors?\b/gi, "")
     .replace(/\b(?:XS|S|M|L|XL|2XL|3XL|4XL|5XL)\s*[-–]\s*(?:XL|2XL|3XL|4XL|5XL)\b/gi, "")
+    .replace(/\bsize\s*1[68]\s*[-–]\s*28\b/gi, "")
+    .replace(/\b1[68]\s*[-–]\s*28\b/gi, "")
     .replace(/\s*[-–—]\s*$/g, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -127,16 +126,9 @@ function classifyTitle(title: string) {
     }
   }
 
-  const looksLikeJersey =
-    /\b(jersey|goalkeeper|gk|retro|player\s*version|home|away|third)\b/i.test(
-      title
-    );
-
   return {
-    eligible: looksLikeJersey,
-    exclusionReason: looksLikeJersey
-      ? null
-      : "No se ha identificado claramente como camiseta de fútbol",
+    eligible: true,
+    exclusionReason: null,
   };
 }
 
@@ -250,7 +242,7 @@ export async function readYupooCatalogBatch(input: unknown) {
 
   if (albums.length > eligible.length) {
     warnings.push(
-      "Se han separado automáticamente productos infantiles, de mujer, entrenamiento y otras categorías."
+      "Solo se han apartado productos NBA o de baloncesto. El resto se enviará al importador para clasificarlo automáticamente."
     );
   }
 
