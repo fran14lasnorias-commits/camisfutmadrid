@@ -52,14 +52,14 @@ const CATEGORY_LINKS = [
     eyebrow: "CLUBES",
     title: "LALIGA",
     description: "Madrid, Barça, Atlético y mucho más.",
-    href: "/catalogo",
+    href: "/catalogo?category=laliga",
     key: "laliga",
   },
   {
     eyebrow: "MUNDIAL",
     title: "SELECCIONES",
     description: "Prepárate para vivir cada partido.",
-    href: "/catalogo?team=selecciones",
+    href: "/catalogo?category=selecciones",
     key: "national",
   },
   {
