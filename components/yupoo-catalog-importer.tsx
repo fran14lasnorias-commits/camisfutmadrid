@@ -25,9 +25,8 @@ const DEFAULT_CATALOG =
 
 const MAX_TOTAL_PRODUCTS = 10_000;
 const MAX_PAGES_TO_SCAN = 500;
-const PAGE_REQUEST_LIMIT = 50;
-const SAVE_CHUNK_SIZE = 100;
-
+const PAGE_REQUEST_LIMIT = 200;
+const SAVE_CHUNK_SIZE = 200;
 function encodeHex(value: string) {
   return Array.from(new TextEncoder().encode(value))
     .map((byte) => byte.toString(16).padStart(2, "0"))
