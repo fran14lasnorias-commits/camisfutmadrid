@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { PRODUCT_TYPE_LABELS } from "@/lib/product-types";
+import type { Product } from "@/lib/products";
 
 type SearchProduct = {
   id: string;
@@ -10,7 +12,7 @@ type SearchProduct = {
   slug: string;
   team: string;
   season: string | null;
-  type: string;
+  type: Product["type"];
   price_eur: number;
   product_images: { url: string; position: number }[];
 };
@@ -256,7 +258,7 @@ export function GlobalProductSearch({
                         <span>{product.team}</span>
                         <strong>{product.name}</strong>
                         <small>
-                          {product.type.toUpperCase()}
+                          {PRODUCT_TYPE_LABELS[product.type].toUpperCase()}
                           {product.season ? ` · ${product.season}` : ""}
                         </small>
                       </div>
