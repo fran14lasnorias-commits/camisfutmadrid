@@ -25,19 +25,7 @@ const CatalogAlbumSchema = z.object({
       }
     }, "El álbum debe pertenecer a Yupoo."),
   title: z.string().trim().min(3).max(240),
-  coverImage: z
-    .string()
-    .url()
-    .nullable()
-    .refine((value) => {
-      if (!value) return true;
-
-      try {
-        return new URL(value).hostname.toLowerCase() === "photo.yupoo.com";
-      } catch {
-        return false;
-      }
-    }, "La portada debe pertenecer a Yupoo."),
+  coverImage: z.string().url().nullable().optional(),
 });
 
 const CatalogSaveSchema = z.object({
