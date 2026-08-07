@@ -1,10 +1,22 @@
+export type ProductType =
+  | "fan"
+  | "player"
+  | "retro"
+  | "kids"
+  | "adult_kit"
+  | "polo"
+  | "shorts"
+  | "socks"
+  | "training"
+  | "nba";
+
 export type Product = {
   id: string;
   slug: string;
   name: string;
   team: string;
   season: string;
-  type: "fan" | "player" | "retro" | "kids";
+  type: ProductType;
   price: number;
   costUsd: number;
   images: string[];
@@ -21,7 +33,10 @@ export const products: Product[] = [
     type: "fan",
     price: 25,
     costUsd: 10,
-    images: ["/placeholder-shirt.svg", "/placeholder-shirt-back.svg"],
-    sizes: ["S","M","L","XL","2XL","3XL","4XL"]
-  }
+    images: [
+      "/placeholder-shirt.svg",
+      "/placeholder-shirt-back.svg",
+    ],
+    sizes: ["S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+  },
 ];
