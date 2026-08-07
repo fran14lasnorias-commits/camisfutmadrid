@@ -97,7 +97,7 @@ export function CheckoutForm() {
 
   if (transferData) {
     return (
-      <section className="card" style={{padding:28,maxWidth:720,margin:"0 auto"}}>
+      <section className="card transferSuccess" style={{padding:"clamp(18px,5vw,28px)",maxWidth:720,margin:"0 auto",overflow:"hidden"}}>
         <span style={{color:"#79f2ad",fontWeight:800}}>PEDIDO CREADO</span>
         <h1>{transferData.number}</h1>
         <p className="muted">Realiza la transferencia indicando exactamente el número de pedido en el concepto.</p>
@@ -115,10 +115,10 @@ export function CheckoutForm() {
   }
 
   return (
-    <form action={submit} style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 360px",gap:24}}>
-      <section className="card" style={{padding:24}}>
+    <form action={submit} className="checkoutGrid">
+      <section className="card checkoutDetails">
         <h2>Datos de entrega</h2>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        <div className="deliveryGrid">
           <input name="fullName" required placeholder="Nombre y apellidos" style={inputStyle}/>
           <input name="email" type="email" required placeholder="Email" style={inputStyle}/>
           <input name="phone" required placeholder="Teléfono" style={inputStyle}/>
@@ -128,14 +128,14 @@ export function CheckoutForm() {
         <input name="city" required placeholder="Ciudad" style={{...inputStyle,marginTop:12}}/>
 
         <h2 style={{marginTop:26}}>Cupón</h2>
-        <div style={{display:"flex",gap:10}}>
+        <div className="couponRow">
           <input value={couponCode} onChange={e=>setCouponCode(e.target.value.toUpperCase())} placeholder="Código de descuento" style={inputStyle}/>
           <button type="button" onClick={validateCoupon} className="btn-secondary">APLICAR</button>
         </div>
         {couponMessage && <p style={{color:discountEur>0?"#79f2ad":"#ff8c9c"}}>{couponMessage}</p>}
 
         <h2 style={{marginTop:26}}>Método de pago</h2>
-        <div style={{display:"grid",gap:10}}>
+        <div className="paymentGrid">
           <label className="card" style={{display:"block",padding:16,borderColor:paymentMethod==="stripe"?"var(--purple)":"var(--border)",cursor:"pointer"}}>
             <input type="radio" name="payment" checked={paymentMethod==="stripe"} onChange={()=>setPaymentMethod("stripe")}/> Tarjeta
             <div className="muted" style={{marginTop:6}}>Pago seguro alojado por Stripe.</div>
@@ -149,16 +149,13 @@ export function CheckoutForm() {
         {error && <p style={{color:"#ff8c9c"}}>{error}</p>}
       </section>
 
-      <aside className="card" style={{padding:20,height:"max-content"}}>
+      <aside className="card checkoutSummary">
         <h2>Resumen</h2>
         {items.map((item,index)=>(
           <article
             key={`${item.productId}-${index}`}
+            className="summaryItem"
             style={{
-              display:"grid",
-              gridTemplateColumns:"64px minmax(0,1fr) auto",
-              gap:12,
-              alignItems:"center",
               padding:"14px 0",
               borderBottom:"1px solid var(--border)",
             }}
@@ -212,7 +209,7 @@ export function CheckoutForm() {
               )}
             </div>
 
-            <strong style={{whiteSpace:"nowrap"}}>
+            <strong className="summaryPrice" style={{whiteSpace:"nowrap"}}>
               {(item.unitPriceEur * item.quantity).toFixed(2).replace(".",",")} €
             </strong>
           </article>
@@ -230,6 +227,146 @@ export function CheckoutForm() {
           {loading ? "PROCESANDO..." : paymentMethod === "stripe" ? "PAGAR CON TARJETA" : "CREAR PEDIDO"}
         </button>
       </aside>
+
+      <style jsx>{`
+        .checkoutGrid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
+          gap: 24px;
+          width: 100%;
+          min-width: 0;
+          align-items: start;
+        }
+
+        .checkoutDetails,
+        .checkoutSummary {
+          min-width: 0;
+        }
+
+        .checkoutDetails {
+          padding: 24px;
+        }
+
+        .checkoutSummary {
+          padding: 20px;
+          height: max-content;
+        }
+
+        .deliveryGrid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: 12px;
+        }
+
+        .couponRow {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 10px;
+        }
+
+        .paymentGrid {
+          display: grid;
+          gap: 10px;
+        }
+
+        .summaryItem {
+          display: grid;
+          grid-template-columns: 64px minmax(0, 1fr) auto;
+          gap: 12px;
+          align-items: center;
+          min-width: 0;
+        }
+
+        @media (max-width: 900px) {
+          .checkoutGrid {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 16px;
+          }
+
+          .checkoutDetails {
+            order: 1;
+          }
+
+          .checkoutSummary {
+            order: 2;
+            width: 100%;
+          }
+        }
+
+        @media (max-width: 600px) {
+          .checkoutGrid {
+            width: 100%;
+            max-width: 100%;
+            gap: 14px;
+          }
+
+          .checkoutDetails,
+          .checkoutSummary {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            border-radius: 18px;
+          }
+
+          .checkoutDetails {
+            padding: 18px 15px;
+          }
+
+          .checkoutSummary {
+            padding: 18px 15px;
+          }
+
+          .deliveryGrid {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 10px;
+          }
+
+          .couponRow {
+            grid-template-columns: minmax(0, 1fr);
+          }
+
+          .couponRow :global(button) {
+            width: 100%;
+            min-height: 48px;
+          }
+
+          .paymentGrid :global(label) {
+            width: 100%;
+            box-sizing: border-box;
+          }
+
+          .summaryItem {
+            grid-template-columns: 56px minmax(0, 1fr);
+            gap: 10px;
+            align-items: start;
+          }
+
+          .summaryItem :global(img) {
+            width: 56px !important;
+            height: 56px !important;
+          }
+
+          .summaryPrice {
+            grid-column: 2;
+            justify-self: start;
+            margin-top: 2px;
+          }
+
+          .checkoutDetails :global(h2),
+          .checkoutSummary :global(h2) {
+            overflow-wrap: normal;
+            word-break: normal;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .checkoutDetails,
+          .checkoutSummary {
+            padding-left: 13px;
+            padding-right: 13px;
+          }
+        }
+      `}</style>
     </form>
   );
 }
