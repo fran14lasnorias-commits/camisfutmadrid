@@ -9,6 +9,12 @@ const TYPE_LABELS: Record<Product["type"], string> = {
   player: "PLAYER",
   retro: "RETRO",
   kids: "NIÑO",
+  adult_kit: "KIT ADULTO",
+  polo: "POLO",
+  shorts: "PANTALÓN",
+  socks: "MEDIAS",
+  training: "ENTRENAMIENTO",
+  nba: "NBA",
 };
 
 const TYPE_COLORS: Record<Product["type"], { color: string; background: string; border: string }> = {
@@ -31,6 +37,36 @@ const TYPE_COLORS: Record<Product["type"], { color: string; background: string; 
     color: "#8af3b7",
     background: "rgba(61,222,138,.10)",
     border: "rgba(61,222,138,.24)",
+  },
+  adult_kit: {
+    color: "#f2b8ff",
+    background: "rgba(217,70,239,.10)",
+    border: "rgba(217,70,239,.24)",
+  },
+  polo: {
+    color: "#a7f3d0",
+    background: "rgba(16,185,129,.10)",
+    border: "rgba(16,185,129,.24)",
+  },
+  shorts: {
+    color: "#bfdbfe",
+    background: "rgba(59,130,246,.10)",
+    border: "rgba(59,130,246,.24)",
+  },
+  socks: {
+    color: "#fde68a",
+    background: "rgba(245,158,11,.10)",
+    border: "rgba(245,158,11,.24)",
+  },
+  training: {
+    color: "#c4b5fd",
+    background: "rgba(124,58,237,.10)",
+    border: "rgba(124,58,237,.24)",
+  },
+  nba: {
+    color: "#fca5a5",
+    background: "rgba(239,68,68,.10)",
+    border: "rgba(239,68,68,.24)",
   },
 };
 
