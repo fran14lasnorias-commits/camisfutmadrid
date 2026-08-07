@@ -359,9 +359,9 @@ async function saveCatalogDrafts(
             return {
               product_id: product.id,
               url: proxyImageUrl(
-                draft.album.coverImage,
-                draft.album.sourceUrl
-              ),
+  draft.album.coverImage ?? null,
+  draft.album.sourceUrl
+),
               position: 0,
             };
           }
