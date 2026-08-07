@@ -119,7 +119,7 @@ export default async function ProductPage({
   const { slug } = await params;
   const [product, products] = await Promise.all([
     getProduct(slug),
-    getPublishedProducts(),
+    getPublishedProducts({ limit: 60 }),
   ]);
 
   if (!product) notFound();
