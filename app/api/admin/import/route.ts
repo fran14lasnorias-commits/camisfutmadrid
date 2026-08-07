@@ -42,7 +42,7 @@ const CatalogAlbumSchema = z.object({
 
 const CatalogSaveSchema = z.object({
   mode: z.literal("catalog-save"),
-  albums: z.array(CatalogAlbumSchema).min(1).max(50),
+  albums: z.array(CatalogAlbumSchema).min(1).max(200),
 });
 
 type CatalogAlbum = z.infer<typeof CatalogAlbumSchema>;
