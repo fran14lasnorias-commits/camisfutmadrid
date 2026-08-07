@@ -119,114 +119,111 @@ export function CatalogBrowser({
           />
         </div>
 
-        <div>
-          <span
-            style={{ display: "block", fontWeight: 800, marginBottom: 9 }}
-          >
-            Equipo
-          </span>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+            gap: 14,
+          }}
+        >
+          <div>
+            <label
+              htmlFor="catalog-team"
+              style={{ display: "block", fontWeight: 800, marginBottom: 8 }}
+            >
+              Equipo
+            </label>
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {["Todos", ...teams].map((item) => {
-              const active = team === item;
+            <select
+              id="catalog-team"
+              value={team}
+              onChange={(event) => {
+                const nextTeam = event.target.value;
+                setTeam(nextTeam);
 
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => {
-                    setTeam(item);
+                const params = new URLSearchParams(window.location.search);
 
-                    const params = new URLSearchParams(window.location.search);
+                if (nextTeam === "Todos") {
+                  params.delete("team");
+                } else {
+                  params.set("team", nextTeam);
+                }
 
-                    if (item === "Todos") {
-                      params.delete("team");
-                    } else {
-                      params.set("team", item);
-                    }
-
-                    const queryString = params.toString();
-                    window.history.replaceState(
-                      {},
-                      "",
-                      queryString ? `/catalogo?${queryString}` : "/catalogo"
-                    );
-                  }}
-                  style={{
-                    padding: "9px 12px",
-                    borderRadius: 999,
-                    border: active
-                      ? "1px solid #a855f7"
-                      : "1px solid var(--border)",
-                    background: active ? "#2b1242" : "#111118",
-                    color: active ? "#e5c1ff" : "#b7b7c1",
-                    cursor: "pointer",
-                    fontWeight: active ? 800 : 600,
-                  }}
-                >
+                const queryString = params.toString();
+                window.history.replaceState(
+                  {},
+                  "",
+                  queryString ? `/catalogo?${queryString}` : "/catalogo"
+                );
+              }}
+              style={{
+                width: "100%",
+                padding: "14px 15px",
+                borderRadius: 12,
+                border: "1px solid var(--border)",
+                background: "#0d0d12",
+                color: "white",
+                fontSize: 16,
+              }}
+            >
+              <option value="Todos">Todos los equipos</option>
+              {teams.map((item) => (
+                <option key={item} value={item}>
                   {item}
-                </button>
-              );
-            })}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
 
-        <div>
-          <span
-            style={{ display: "block", fontWeight: 800, marginBottom: 9 }}
-          >
-            Tipo
-          </span>
+          <div>
+            <label
+              htmlFor="catalog-type"
+              style={{ display: "block", fontWeight: 800, marginBottom: 8 }}
+            >
+              Tipo
+            </label>
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {[
-              ["Todos", "Todos"],
-              ["fan", "Fan"],
-              ["player", "Player"],
-              ["retro", "Retro"],
-              ["kids", "Niño"],
-            ].map(([value, label]) => {
-              const active = type === value;
+            <select
+              id="catalog-type"
+              value={type}
+              onChange={(event) => {
+                const nextType = event.target.value as
+                  | "Todos"
+                  | Product["type"];
 
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => {
-                    const nextType = value as "Todos" | Product["type"];
-                    setType(nextType);
+                setType(nextType);
 
-                    const params = new URLSearchParams(window.location.search);
+                const params = new URLSearchParams(window.location.search);
 
-                    if (nextType === "Todos") {
-                      params.delete("type");
-                    } else {
-                      params.set("type", nextType);
-                    }
+                if (nextType === "Todos") {
+                  params.delete("type");
+                } else {
+                  params.set("type", nextType);
+                }
 
-                    const queryString = params.toString();
-                    window.history.replaceState(
-                      {},
-                      "",
-                      queryString ? `/catalogo?${queryString}` : "/catalogo"
-                    );
-                  }}
-                  style={{
-                    padding: "9px 12px",
-                    borderRadius: 999,
-                    border: active
-                      ? "1px solid #a855f7"
-                      : "1px solid var(--border)",
-                    background: active ? "#2b1242" : "#111118",
-                    color: active ? "#e5c1ff" : "#b7b7c1",
-                    cursor: "pointer",
-                    fontWeight: active ? 800 : 600,
-                  }}
-                >
-                  {label}
-                </button>
-              );
-            })}
+                const queryString = params.toString();
+                window.history.replaceState(
+                  {},
+                  "",
+                  queryString ? `/catalogo?${queryString}` : "/catalogo"
+                );
+              }}
+              style={{
+                width: "100%",
+                padding: "14px 15px",
+                borderRadius: 12,
+                border: "1px solid var(--border)",
+                background: "#0d0d12",
+                color: "white",
+                fontSize: 16,
+              }}
+            >
+              <option value="Todos">Todos los tipos</option>
+              <option value="fan">Fan</option>
+              <option value="player">Player</option>
+              <option value="retro">Retro</option>
+              <option value="kids">Niño</option>
+            </select>
           </div>
         </div>
       </div>
