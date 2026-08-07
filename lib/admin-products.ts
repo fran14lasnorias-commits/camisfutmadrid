@@ -1,5 +1,26 @@
 import { z } from "zod";
 
+const ProductImageUrlSchema = z
+  .string()
+  .min(1)
+  .refine(
+    (value) => {
+      // Admitimos imágenes externas http/https y rutas internas de la propia web,
+      // por ejemplo /api/yupoo-image?... y /placeholder-shirt.svg.
+      if (value.startsWith("/")) return true;
+
+      try {
+        const url = new URL(value);
+        return url.protocol === "http:" || url.protocol === "https:";
+      } catch {
+        return false;
+      }
+    },
+    {
+      message: "La imagen debe ser una URL válida o una ruta interna de la web.",
+    }
+  );
+
 export const ProductAdminSchema = z
   .object({
     name: z.string().min(3),
@@ -24,7 +45,7 @@ export const ProductAdminSchema = z
     description: z.string().optional(),
     supplierUrl: z.string().url().optional().or(z.literal("")),
     published: z.boolean(),
-    images: z.array(z.string().url()).default([]),
+    images: z.array(ProductImageUrlSchema).default([]),
     variants: z
       .array(
         z.object({
