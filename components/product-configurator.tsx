@@ -192,6 +192,15 @@ export function ProductConfigurator({ product }: { product: Product }) {
     [product.price, sizeExtra, personalizationExtra, patchExtra],
   );
 
+  const onSale =
+    typeof product.originalPrice === "number" &&
+    product.originalPrice > product.price;
+  const discountPercent = onSale
+    ? Math.round(
+        ((product.originalPrice! - product.price) / product.originalPrice!) * 100
+      )
+    : 0;
+
   const previewName = name || "TU NOMBRE";
   const previewNumber = number || "00";
   const patchOptions = useMemo(() => patchOptionsFor(product), [product]);
@@ -338,7 +347,44 @@ export function ProductConfigurator({ product }: { product: Product }) {
         <p className={styles.meta}>Versión {product.type} · {product.season}</p>
 
         <div className={styles.priceLine}>
-          <strong className={styles.price}>{money(total)}</strong>
+          <div>
+            {onSale && (
+              <div
+                style={{
+                  display:"flex",
+                  alignItems:"center",
+                  gap:9,
+                  marginBottom:5,
+                  flexWrap:"wrap",
+                }}
+              >
+                <span
+                  style={{
+                    color:"#7d7d88",
+                    fontSize:14,
+                    fontWeight:700,
+                    textDecoration:"line-through",
+                  }}
+                >
+                  {money(product.originalPrice!)}
+                </span>
+                <span
+                  style={{
+                    padding:"4px 7px",
+                    borderRadius:999,
+                    background:"rgba(255,72,105,.13)",
+                    border:"1px solid rgba(255,72,105,.28)",
+                    color:"#ff9aaa",
+                    fontSize:10,
+                    fontWeight:900,
+                  }}
+                >
+                  -{discountPercent}%
+                </span>
+              </div>
+            )}
+            <strong className={styles.price}>{money(total)}</strong>
+          </div>
           <span className={styles.priceNote}>Precio actualizado<br />en tiempo real</span>
         </div>
 
@@ -479,8 +525,21 @@ export function ProductConfigurator({ product }: { product: Product }) {
 
         <div className={styles.priceBreakdown}>
           <div className={styles.priceRow}>
-            <span>Camiseta</span>
-            <strong>{money(product.price)}</strong>
+            <span>{onSale ? "Camiseta · oferta" : "Camiseta"}</span>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              {onSale && (
+                <span
+                  style={{
+                    color:"#777783",
+                    fontSize:12,
+                    textDecoration:"line-through",
+                  }}
+                >
+                  {money(product.originalPrice!)}
+                </span>
+              )}
+              <strong>{money(product.price)}</strong>
+            </div>
           </div>
           {sizeExtra > 0 && (
             <div className={styles.priceRow}>
