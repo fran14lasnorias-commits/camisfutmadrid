@@ -4,13 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ProductCard } from "@/components/product-card";
 import type { Product } from "@/lib/products";
-
-const TYPE_LABELS: Record<Product["type"], string> = {
-  fan: "Fan",
-  player: "Player",
-  retro: "Retro",
-  kids: "Niño",
-};
+import { PRODUCT_TYPE_FILTER_OPTIONS, PRODUCT_TYPE_LABELS } from "@/lib/product-types";
 
 const PRODUCTS_PER_BATCH = 24;
 
@@ -61,7 +55,7 @@ function productSearchText(product: Product) {
       product.name,
       product.team,
       product.season,
-      TYPE_LABELS[product.type],
+      PRODUCT_TYPE_LABELS[product.type],
       product.type,
     ].join(" ")
   );
@@ -75,7 +69,7 @@ function scoreProduct(product: Product, query: string) {
   const name = normalize(product.name);
   const team = normalize(product.team);
   const season = normalize(product.season);
-  const type = normalize(TYPE_LABELS[product.type]);
+  const type = normalize(PRODUCT_TYPE_LABELS[product.type]);
   const fullText = productSearchText(product);
 
   let score = 0;
@@ -433,7 +427,7 @@ export function CatalogBrowser({
                         className="muted"
                         style={{ display: "block", marginTop: 2, fontSize: 12 }}
                       >
-                        {product.team} · {TYPE_LABELS[product.type]}
+                        {product.team} · {PRODUCT_TYPE_LABELS[product.type]}
                       </span>
                     </div>
 
@@ -489,10 +483,11 @@ export function CatalogBrowser({
             }}
           >
             <option value="Todos">Todos los tipos</option>
-            <option value="fan">Fan</option>
-            <option value="player">Player</option>
-            <option value="retro">Retro</option>
-            <option value="kids">Niño</option>
+            {PRODUCT_TYPE_FILTER_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </FilterSelect>
 
           <FilterSelect
