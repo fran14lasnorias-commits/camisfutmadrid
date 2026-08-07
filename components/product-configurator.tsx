@@ -173,8 +173,15 @@ export function ProductConfigurator({ product }: { product: Product }) {
   const router = useRouter();
 
   const frontImage = product.images[0] || "/placeholder-shirt.svg";
-  const backImage = product.images[1] || product.images[0] || "/placeholder-shirt-back.svg";
-  const activeImage = view === "back" ? backImage : frontImage;
+  const backImage =
+    product.images[1] && product.images[1] !== frontImage
+      ? product.images[1]
+      : null;
+  const hasBackImage = Boolean(backImage);
+  const activeImage =
+    view === "back" && backImage
+      ? backImage
+      : frontImage;
 
   const sizeExtra = size === "4XL" ? 2 : 0;
   const personalizationExtra = personalized ? PERSONALIZATION_PRICE_EUR : 0;
@@ -193,12 +200,18 @@ export function ProductConfigurator({ product }: { product: Product }) {
   function togglePersonalization(enabled: boolean) {
     setPersonalized(enabled);
     setError("");
-    if (enabled) setView("back");
+
+    if (enabled && hasBackImage) {
+      setView("back");
+    }
   }
 
   function selectPatch(value: string) {
     setPatch(value);
-    if (value) setView("back");
+
+    if (value && hasBackImage) {
+      setView("back");
+    }
   }
 
   function addToCart() {
@@ -211,7 +224,11 @@ export function ProductConfigurator({ product }: { product: Product }) {
 
     if (personalized && (!name.trim() || !number.trim())) {
       setError("Completa el nombre y el dorsal para guardar la personalización.");
-      setView("back");
+
+      if (hasBackImage) {
+        setView("back");
+      }
+
       return;
     }
 
@@ -256,14 +273,16 @@ export function ProductConfigurator({ product }: { product: Product }) {
             >
               Frontal
             </button>
-            <button
-              type="button"
-              className={`${styles.viewButton} ${view === "back" ? styles.viewButtonActive : ""}`}
-              onClick={() => setView("back")}
-              aria-pressed={view === "back"}
-            >
-              Trasera
-            </button>
+            {hasBackImage && (
+              <button
+                type="button"
+                className={`${styles.viewButton} ${view === "back" ? styles.viewButtonActive : ""}`}
+                onClick={() => setView("back")}
+                aria-pressed={view === "back"}
+              >
+                Trasera
+              </button>
+            )}
           </div>
         </div>
 
@@ -299,14 +318,16 @@ export function ProductConfigurator({ product }: { product: Product }) {
             >
               <img src={frontImage} alt="" />
             </button>
-            <button
-              type="button"
-              className={`${styles.thumbnail} ${view === "back" ? styles.thumbnailActive : ""}`}
-              onClick={() => setView("back")}
-              aria-label="Ver parte trasera"
-            >
-              <img src={backImage} alt="" />
-            </button>
+            {backImage && (
+              <button
+                type="button"
+                className={`${styles.thumbnail} ${view === "back" ? styles.thumbnailActive : ""}`}
+                onClick={() => setView("back")}
+                aria-label="Ver parte trasera"
+              >
+                <img src={backImage} alt="" />
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -394,7 +415,10 @@ export function ProductConfigurator({ product }: { product: Product }) {
                     onChange={event => {
                       setName(sanitizeName(event.target.value));
                       setError("");
-                      setView("back");
+
+                      if (hasBackImage) {
+                        setView("back");
+                      }
                     }}
                     maxLength={12}
                     placeholder="MBAPPÉ"
@@ -410,7 +434,10 @@ export function ProductConfigurator({ product }: { product: Product }) {
                     onChange={event => {
                       setNumber(event.target.value.replace(/\D/g, "").slice(0, 2));
                       setError("");
-                      setView("back");
+
+                      if (hasBackImage) {
+                        setView("back");
+                      }
                     }}
                     maxLength={2}
                     inputMode="numeric"
@@ -420,7 +447,11 @@ export function ProductConfigurator({ product }: { product: Product }) {
                   />
                 </label>
               </div>
-              <p className={styles.helper}>Máximo 12 caracteres y dorsal del 0 al 99.</p>
+              <p className={styles.helper}>
+                Máximo 12 caracteres y dorsal del 0 al 99.
+                {!hasBackImage &&
+                  " La vista trasera no está disponible para este producto, pero la personalización se añadirá correctamente al pedido."}
+              </p>
             </>
           )}
         </section>
@@ -475,13 +506,11 @@ export function ProductConfigurator({ product }: { product: Product }) {
           </div>
         </div>
 
-        {error && <p className={styles.error} role="alert">{error}</p>}
-
-{error && (
-  <p className={styles.error} role="alert">
-    {error}
-  </p>
-)}
+        {error && (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        )}
 
         <button
           type="button"
