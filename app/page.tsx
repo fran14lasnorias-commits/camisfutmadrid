@@ -114,7 +114,7 @@ const BENEFITS = [
 ];
 
 export default async function HomePage() {
-  const products = await getPublishedProducts();
+  const products = await getPublishedProducts({ limit: 40 });
   const featured = products[0];
   const secondaryFeatured = products[1] ?? featured;
 
