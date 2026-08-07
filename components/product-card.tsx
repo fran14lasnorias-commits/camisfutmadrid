@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Product } from "@/lib/products";
+import { useFavorites } from "@/components/favorites-provider";
 
 const TYPE_LABELS: Record<Product["type"], string> = {
   fan: "FAN",
@@ -11,7 +12,10 @@ const TYPE_LABELS: Record<Product["type"], string> = {
   kids: "NIÑO",
 };
 
-const TYPE_COLORS: Record<Product["type"], { color: string; background: string; border: string }> = {
+const TYPE_COLORS: Record<
+  Product["type"],
+  { color: string; background: string; border: string }
+> = {
   fan: {
     color: "#d8b4ff",
     background: "rgba(139,44,255,.12)",
@@ -37,11 +41,13 @@ const TYPE_COLORS: Record<Product["type"], { color: string; background: string; 
 export function ProductCard({ product }: { product: Product }) {
   const [hovered, setHovered] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+  const { isFavorite, toggleFavorite, hydrated } = useFavorites();
 
   const primaryImage = product.images[0] || "/placeholder-shirt.svg";
   const secondaryImage = product.images[1] || primaryImage;
   const activeImage = hovered ? secondaryImage : primaryImage;
   const badge = TYPE_COLORS[product.type];
+  const favorite = hydrated && isFavorite(product.id);
 
   return (
     <article
@@ -64,6 +70,49 @@ export function ProductCard({ product }: { product: Product }) {
           "linear-gradient(180deg,rgba(255,255,255,.018),transparent),var(--surface)",
       }}
     >
+      <button
+        type="button"
+        aria-label={
+          favorite
+            ? `Quitar ${product.name} de favoritos`
+            : `Añadir ${product.name} a favoritos`
+        }
+        aria-pressed={favorite}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          toggleFavorite(product.id);
+        }}
+        style={{
+          position: "absolute",
+          top: 13,
+          right: 13,
+          zIndex: 8,
+          display: "grid",
+          width: 42,
+          height: 42,
+          placeItems: "center",
+          padding: 0,
+          border: favorite
+            ? "1px solid rgba(255,103,151,.40)"
+            : "1px solid rgba(255,255,255,.12)",
+          borderRadius: "50%",
+          background: favorite
+            ? "rgba(255,70,130,.16)"
+            : "rgba(8,8,12,.68)",
+          color: favorite ? "#ff6f9d" : "#ffffff",
+          backdropFilter: "blur(12px)",
+          boxShadow: favorite
+            ? "0 8px 24px rgba(255,70,130,.18)"
+            : "0 8px 20px rgba(0,0,0,.22)",
+          cursor: "pointer",
+          transition:
+            "transform 160ms ease, background 160ms ease, color 160ms ease",
+        }}
+      >
+        <HeartIcon filled={favorite} />
+      </button>
+
       <Link
         href={`/producto/${product.slug}`}
         aria-label={`Ver ${product.name}`}
@@ -296,5 +345,25 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
       </Link>
     </article>
+  );
+}
+
+function HeartIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      width="21"
+      height="21"
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      aria-hidden="true"
+    >
+      <path
+        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
