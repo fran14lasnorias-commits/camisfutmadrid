@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ProductCard } from "@/components/product-card";
 import type { Product } from "@/lib/products";
 
@@ -10,6 +10,8 @@ const TYPE_LABELS: Record<Product["type"], string> = {
   retro: "Retro",
   kids: "Niño",
 };
+
+const PRODUCTS_PER_BATCH = 24;
 
 type CatalogBrowserProps = {
   products: Product[];
@@ -25,6 +27,7 @@ export function CatalogBrowser({
   const [query, setQuery] = useState("");
   const [team, setTeam] = useState(initialTeam);
   const [type, setType] = useState<"Todos" | Product["type"]>(initialType);
+  const [visibleCount, setVisibleCount] = useState(PRODUCTS_PER_BATCH);
 
   const teams = useMemo(
     () =>
@@ -66,6 +69,14 @@ export function CatalogBrowser({
       window.history.replaceState({}, "", "/catalogo");
     }
   }
+
+  useEffect(() => {
+    setVisibleCount(PRODUCTS_PER_BATCH);
+  }, [query, team, type]);
+
+  const visibleProducts = filteredProducts.slice(0, visibleCount);
+  const hasMoreProducts = visibleCount < filteredProducts.length;
+
 
   const filtersAreActive =
     query.trim() !== "" || team !== "Todos" || type !== "Todos";
@@ -230,10 +241,21 @@ export function CatalogBrowser({
           flexWrap: "wrap",
         }}
       >
-        <strong>
-          {filteredProducts.length}{" "}
-          {filteredProducts.length === 1 ? "camiseta" : "camisetas"}
-        </strong>
+        <div>
+          <strong>
+            {filteredProducts.length}{" "}
+            {filteredProducts.length === 1 ? "camiseta" : "camisetas"}
+          </strong>
+
+          {filteredProducts.length > 0 && (
+            <span
+              className="muted"
+              style={{ display: "block", marginTop: 4, fontSize: 13 }}
+            >
+              Mostrando {visibleProducts.length} de {filteredProducts.length}
+            </span>
+          )}
+        </div>
 
         {filtersAreActive && (
           <button
@@ -255,7 +277,7 @@ export function CatalogBrowser({
             marginTop: 18,
           }}
         >
-          {filteredProducts.map((product) => (
+          {visibleProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
@@ -271,6 +293,27 @@ export function CatalogBrowser({
             className="btn-primary"
           >
             VER TODO EL CATÁLOGO
+          </button>
+        </div>
+      )}
+
+      {hasMoreProducts && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginTop: 28,
+          }}
+        >
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() =>
+              setVisibleCount((current) => current + PRODUCTS_PER_BATCH)
+            }
+            style={{ minWidth: 230 }}
+          >
+            MOSTRAR 24 MÁS
           </button>
         </div>
       )}
