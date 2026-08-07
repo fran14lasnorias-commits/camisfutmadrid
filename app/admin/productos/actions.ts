@@ -8,7 +8,19 @@ import { ProductAdminSchema } from "@/lib/admin-products";
 const ProductIdsSchema = z
   .array(z.string().uuid())
   .min(1, "Selecciona al menos un producto.")
-  .max(200, "Puedes gestionar como máximo 200 productos cada vez.");
+  .max(2000, "Puedes gestionar como máximo 2.000 productos cada vez.");
+
+const BULK_BATCH_SIZE = 100;
+
+function splitIntoBatches<T>(items: T[], size = BULK_BATCH_SIZE) {
+  const batches: T[][] = [];
+
+  for (let index = 0; index < items.length; index += size) {
+    batches.push(items.slice(index, index + size));
+  }
+
+  return batches;
+}
 
 function refreshProductPages() {
   revalidatePath("/");
@@ -16,7 +28,6 @@ function refreshProductPages() {
   revalidatePath("/admin");
   revalidatePath("/admin/productos");
   revalidatePath("/admin/stock");
-  revalidatePath("/sitemap.xml");
 }
 
 export async function createProduct(input: unknown) {
@@ -162,22 +173,33 @@ export async function bulkSetProductsPublished(
 ) {
   const ids = ProductIdsSchema.parse(productIds);
   const { supabase } = await requireAdmin();
+  const updatedAt = new Date().toISOString();
 
-  const { data, error } = await supabase
-    .from("products")
-    .update({
-      published,
-      updated_at: new Date().toISOString(),
-    })
-    .in("id", ids)
-    .select("id");
+  let updated = 0;
 
-  if (error) throw new Error(error.message);
+  for (const batch of splitIntoBatches(ids)) {
+    const { data, error } = await supabase
+      .from("products")
+      .update({
+        published,
+        updated_at: updatedAt,
+      })
+      .in("id", batch)
+      .select("id");
+
+    if (error) {
+      throw new Error(
+        `No se pudo actualizar una tanda de productos: ${error.message}`
+      );
+    }
+
+    updated += data?.length ?? 0;
+  }
 
   refreshProductPages();
 
   return {
-    updated: data?.length ?? 0,
+    updated,
     published,
   };
 }
@@ -186,17 +208,27 @@ export async function bulkDeleteProducts(productIds: unknown) {
   const ids = ProductIdsSchema.parse(productIds);
   const { supabase } = await requireAdmin();
 
-  const { data, error } = await supabase
-    .from("products")
-    .delete()
-    .in("id", ids)
-    .select("id");
+  let deleted = 0;
 
-  if (error) throw new Error(error.message);
+  for (const batch of splitIntoBatches(ids)) {
+    const { data, error } = await supabase
+      .from("products")
+      .delete()
+      .in("id", batch)
+      .select("id");
+
+    if (error) {
+      throw new Error(
+        `No se pudo eliminar una tanda de productos: ${error.message}`
+      );
+    }
+
+    deleted += data?.length ?? 0;
+  }
 
   refreshProductPages();
 
   return {
-    deleted: data?.length ?? 0,
+    deleted,
   };
 }
