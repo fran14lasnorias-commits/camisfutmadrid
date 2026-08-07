@@ -9,7 +9,7 @@ export default async function AdminProductsPage() {
   const { data: products, error } = await supabase
     .from("products")
     .select(`
-      id,name,slug,team,season,type,price_eur,supplier_cost_usd,
+      id,name,slug,team,season,type,price_eur,original_price_eur,supplier_cost_usd,
       description,supplier_url,published,created_at,
       product_images(url,position),
       product_variants(size,stock)
