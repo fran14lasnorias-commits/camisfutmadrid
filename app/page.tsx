@@ -39,222 +39,727 @@ export const metadata: Metadata = {
   },
 };
 
+const CATEGORY_LINKS = [
+  {
+    eyebrow: "NUEVA TEMPORADA",
+    title: "26/27",
+    description: "Los nuevos diseños antes que nadie.",
+    href: "/catalogo?season=2026%2F27",
+  },
+  {
+    eyebrow: "CLUBES",
+    title: "LALIGA",
+    description: "Madrid, Barça, Atlético y mucho más.",
+    href: "/catalogo",
+  },
+  {
+    eyebrow: "MUNDIAL",
+    title: "SELECCIONES",
+    description: "Prepárate para vivir cada partido.",
+    href: "/catalogo?team=selecciones",
+  },
+  {
+    eyebrow: "HISTORIA",
+    title: "RETRO",
+    description: "Camisetas que nunca pasan de moda.",
+    href: "/catalogo?type=retro",
+  },
+];
+
+const BENEFITS = [
+  {
+    title: "PERSONALIZACIÓN",
+    text: "Añade nombre, dorsal y parche desde la propia ficha del producto.",
+  },
+  {
+    title: "PAGO SEGURO",
+    text: "Proceso de compra claro, rápido y adaptado al móvil.",
+  },
+  {
+    title: "ENTREGA EN MADRID",
+    text: "Recibe tu pedido con atención cercana y seguimiento.",
+  },
+];
+
 export default async function HomePage() {
   const products = await getPublishedProducts();
   const featured = products[0];
+  const secondaryFeatured = products[1] ?? featured;
 
   return (
-    <main>
+    <main style={{ overflow: "hidden" }}>
       <section
-        className="container"
         style={{
+          position: "relative",
+          minHeight: "min(780px, calc(100vh - 110px))",
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
-          gap: 30,
           alignItems: "center",
-          padding: "70px 0",
+          borderBottom: "1px solid rgba(255,255,255,.07)",
+          background:
+            "radial-gradient(circle at 75% 30%, rgba(139,44,255,.34), transparent 30rem), linear-gradient(180deg, rgba(255,255,255,.018), transparent)",
         }}
       >
-        <div>
-          <span
-            style={{
-              display: "inline-flex",
-              padding: "8px 12px",
-              borderRadius: 999,
-              background: "#25103e",
-              color: "#d4a6ff",
-              fontWeight: 800,
-              fontSize: 13,
-            }}
-          >
-            NUEVA TEMPORADA 2026/27
-          </span>
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px)",
+            backgroundSize: "44px 44px",
+            maskImage:
+              "linear-gradient(to bottom, rgba(0,0,0,.6), transparent 90%)",
+            pointerEvents: "none",
+          }}
+        />
 
-          <h1
-            style={{
-              fontSize: "clamp(54px,8vw,104px)",
-              lineHeight: 0.88,
-              letterSpacing: -4,
-              margin: "20px 0",
-            }}
-          >
-            CAMISFUT
-            <br />
-            <span style={{ color: "var(--purple-2)" }}>MADRID</span>
-          </h1>
-
-          <p
-            className="muted"
-            style={{ fontSize: 19, lineHeight: 1.55, maxWidth: 590 }}
-          >
-            Camisetas de fútbol premium, personalización, entrega en Madrid y
-            compra rápida desde el móvil.
-          </p>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 12,
-              marginTop: 26,
-              flexWrap: "wrap",
-            }}
-          >
-            <Link className="btn-primary" href="/catalogo">
-              VER CATÁLOGO
-            </Link>
-
-            {featured && (
-              <Link
-                className="btn-secondary"
-                href={`/producto/${featured.slug}`}
-              >
-                VER DESTACADA
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {featured ? (
-          <Link
-            href={`/producto/${featured.slug}`}
-            aria-label={`Ver ${featured.name}`}
-            className="card"
-            style={{
-              minHeight: 500,
-              display: "grid",
-              placeItems: "center",
-              position: "relative",
-              overflow: "hidden",
-              padding: 28,
-              textDecoration: "none",
-              color: "inherit",
-              cursor: "pointer",
-              background:
-                "radial-gradient(circle at 50% 40%,#6d1dbb66,transparent 58%),#0e0e13",
-            }}
-          >
-            <img
-              src={featured.images[0]}
-              alt={featured.name}
+        <div
+          className="container"
+          style={{
+            position: "relative",
+            zIndex: 1,
+            display: "grid",
+            gridTemplateColumns: "minmax(0,1.02fr) minmax(320px,.98fr)",
+            gap: "clamp(30px,6vw,90px)",
+            alignItems: "center",
+            padding: "clamp(54px,8vw,104px) 0",
+          }}
+        >
+          <div>
+            <span
               style={{
-                width: "82%",
-                height: 390,
-                objectFit: "contain",
-                filter: "drop-shadow(0 32px 38px #000)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 12px",
+                borderRadius: 999,
+                border: "1px solid rgba(195,92,255,.24)",
+                background: "rgba(139,44,255,.10)",
+                color: "#e0bfff",
+                fontSize: 12,
+                fontWeight: 900,
+                letterSpacing: ".12em",
               }}
-            />
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: "var(--purple-2)",
+                  boxShadow: "0 0 14px var(--purple-2)",
+                }}
+              />
+              NUEVA TEMPORADA 2026/27
+            </span>
+
+            <h1
+              style={{
+                maxWidth: 760,
+                margin: "24px 0 20px",
+                fontSize: "clamp(4rem,10vw,8.4rem)",
+                lineHeight: 0.78,
+                letterSpacing: "-.025em",
+              }}
+            >
+              TU EQUIPO.
+              <br />
+              <span
+                style={{
+                  color: "transparent",
+                  WebkitTextStroke: "1px rgba(255,255,255,.72)",
+                }}
+              >
+                TU CAMISETA.
+              </span>
+              <br />
+              <span style={{ color: "var(--purple-2)" }}>TU HISTORIA.</span>
+            </h1>
+
+            <p
+              className="muted"
+              style={{
+                maxWidth: 620,
+                margin: 0,
+                fontSize: "clamp(17px,2vw,21px)",
+                lineHeight: 1.6,
+              }}
+            >
+              Camisetas de fútbol premium, personalizadas con nombre, dorsal y
+              parche. Compra rápida, diseño cuidado y una experiencia hecha para
+              auténticos aficionados.
+            </p>
 
             <div
               style={{
-                position: "absolute",
-                left: 22,
-                right: 22,
-                bottom: 20,
-                padding: "14px 16px",
-                borderRadius: 16,
-                background: "rgba(8,8,12,.88)",
-                border: "1px solid rgba(255,255,255,.12)",
-                backdropFilter: "blur(10px)",
+                display: "flex",
+                gap: 12,
+                flexWrap: "wrap",
+                marginTop: 30,
+              }}
+            >
+              <Link className="btn-primary" href="/catalogo">
+                VER COLECCIÓN
+              </Link>
+
+              {featured && (
+                <Link
+                  className="btn-secondary"
+                  href={`/producto/${featured.slug}`}
+                >
+                  VER DESTACADA
+                </Link>
+              )}
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 24,
+                flexWrap: "wrap",
+                marginTop: 34,
+                paddingTop: 24,
+                borderTop: "1px solid rgba(255,255,255,.08)",
+              }}
+            >
+              <Stat value="+600" label="MODELOS" />
+              <Stat value="7–13" label="DÍAS DE ENTREGA" />
+              <Stat value="100%" label="COMPRA SEGURA" />
+            </div>
+          </div>
+
+          {featured ? (
+            <Link
+              href={`/producto/${featured.slug}`}
+              aria-label={`Ver ${featured.name}`}
+              style={{
+                position: "relative",
+                minHeight: 580,
+                display: "grid",
+                placeItems: "center",
+                overflow: "hidden",
+                border: "1px solid rgba(195,92,255,.18)",
+                borderRadius: 34,
+                background:
+                  "radial-gradient(circle at 50% 42%, rgba(139,44,255,.42), transparent 42%), #0d0d12",
+                boxShadow:
+                  "0 34px 90px rgba(0,0,0,.46), inset 0 1px 0 rgba(255,255,255,.05)",
               }}
             >
               <span
                 style={{
-                  color: "#d6a6ff",
-                  fontSize: 12,
-                  fontWeight: 800,
+                  position: "absolute",
+                  top: 22,
+                  left: 22,
+                  zIndex: 2,
+                  padding: "8px 11px",
+                  borderRadius: 999,
+                  background: "rgba(8,8,12,.72)",
+                  border: "1px solid rgba(255,255,255,.10)",
+                  backdropFilter: "blur(12px)",
+                  color: "#e3c7ff",
+                  fontSize: 11,
+                  fontWeight: 900,
+                  letterSpacing: ".09em",
                 }}
               >
-                CAMISETA DESTACADA
+                ELECCIÓN CAMISFUT
               </span>
 
               <div
+                aria-hidden="true"
                 style={{
+                  position: "absolute",
+                  width: "72%",
+                  aspectRatio: "1",
+                  borderRadius: "50%",
+                  border: "1px solid rgba(195,92,255,.14)",
+                  boxShadow:
+                    "0 0 0 60px rgba(195,92,255,.025), 0 0 0 120px rgba(195,92,255,.018)",
+                }}
+              />
+
+              <img
+                src={featured.images[0] || "/placeholder-shirt.svg"}
+                alt={featured.name}
+                style={{
+                  position: "relative",
+                  zIndex: 1,
+                  width: "84%",
+                  height: 430,
+                  objectFit: "contain",
+                  filter: "drop-shadow(0 42px 38px rgba(0,0,0,.72))",
+                  transform: "rotate(-2deg)",
+                }}
+              />
+
+              <div
+                style={{
+                  position: "absolute",
+                  left: 18,
+                  right: 18,
+                  bottom: 18,
+                  zIndex: 3,
                   display: "flex",
                   justifyContent: "space-between",
-                  gap: 14,
                   alignItems: "center",
-                  marginTop: 5,
-                  flexWrap: "wrap",
+                  gap: 16,
+                  padding: "17px 18px",
+                  border: "1px solid rgba(255,255,255,.10)",
+                  borderRadius: 18,
+                  background: "rgba(8,8,12,.82)",
+                  backdropFilter: "blur(18px)",
                 }}
               >
-                <div>
-                  <strong style={{ display: "block" }}>{featured.name}</strong>
+                <div style={{ minWidth: 0 }}>
+                  <span
+                    style={{
+                      color: "#d8b4ff",
+                      fontSize: 10,
+                      fontWeight: 900,
+                      letterSpacing: ".12em",
+                    }}
+                  >
+                    CAMISETA DESTACADA
+                  </span>
+
                   <strong
                     style={{
                       display: "block",
-                      color: "var(--purple-2)",
                       marginTop: 4,
+                      fontSize: 18,
+                      lineHeight: 1.25,
                     }}
                   >
-                    {featured.price.toFixed(2).replace(".", ",")} €
+                    {featured.name}
                   </strong>
                 </div>
 
-                <span
+                <strong
                   style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    background: "var(--purple-2)",
-                    color: "white",
-                    fontSize: 13,
-                    fontWeight: 900,
-                    whiteSpace: "nowrap",
+                    flex: "0 0 auto",
+                    color: "var(--purple-2)",
+                    fontSize: 21,
                   }}
                 >
-                  VER PRODUCTO →
-                </span>
+                  {featured.price.toFixed(2).replace(".", ",")} €
+                </strong>
               </div>
+            </Link>
+          ) : (
+            <div
+              className="card"
+              style={{
+                minHeight: 580,
+                display: "grid",
+                placeItems: "center",
+                padding: 30,
+              }}
+            >
+              <strong>Próximamente nuevas camisetas</strong>
             </div>
-          </Link>
-        ) : (
-          <div
-            className="card"
-            style={{
-              minHeight: 500,
-              display: "grid",
-              placeItems: "center",
-              padding: 28,
-            }}
-          >
-            <strong>Próximamente nuevas camisetas</strong>
-          </div>
-        )}
+          )}
+        </div>
       </section>
 
-      <section className="container" style={{ padding: "30px 0 70px" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 16,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <h2 style={{ fontSize: 32, margin: 0 }}>Más vendidas</h2>
-          <Link href="/catalogo" style={{ color: "#d6a6ff", fontWeight: 800 }}>
-            VER TODO →
-          </Link>
-        </div>
+      <section className="container" style={{ padding: "78px 0 22px" }}>
+        <SectionHeader
+          eyebrow="ENCUENTRA LA TUYA"
+          title="COMPRA POR CATEGORÍA"
+          description="Entra directamente en la colección que buscas."
+        />
 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
-            gap: 18,
-            marginTop: 22,
+            gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+            gap: 16,
+            marginTop: 28,
           }}
         >
-          {products
-            .slice(0, 8)
-            .map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+          {CATEGORY_LINKS.map((category, index) => (
+            <Link
+              key={category.title}
+              href={category.href}
+              style={{
+                position: "relative",
+                minHeight: index === 0 || index === 3 ? 300 : 250,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "flex-end",
+                overflow: "hidden",
+                padding: "clamp(22px,4vw,36px)",
+                border: "1px solid rgba(255,255,255,.08)",
+                borderRadius: 26,
+                background:
+                  index % 2 === 0
+                    ? "radial-gradient(circle at 85% 12%, rgba(139,44,255,.30), transparent 18rem), #111116"
+                    : "radial-gradient(circle at 15% 10%, rgba(195,92,255,.22), transparent 18rem), #111116",
+              }}
+            >
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "linear-gradient(145deg, transparent 10%, rgba(255,255,255,.025) 48%, transparent 49%)",
+                  backgroundSize: "22px 22px",
+                  opacity: 0.7,
+                }}
+              />
+
+              <span
+                style={{
+                  position: "relative",
+                  zIndex: 1,
+                  color: "#d6a6ff",
+                  fontSize: 11,
+                  fontWeight: 900,
+                  letterSpacing: ".14em",
+                }}
+              >
+                {category.eyebrow}
+              </span>
+
+              <strong
+                style={{
+                  position: "relative",
+                  zIndex: 1,
+                  display: "block",
+                  marginTop: 7,
+                  fontFamily: "var(--font-display)",
+                  fontSize: "clamp(2.8rem,7vw,5.2rem)",
+                  lineHeight: 0.85,
+                }}
+              >
+                {category.title}
+              </strong>
+
+              <div
+                style={{
+                  position: "relative",
+                  zIndex: 1,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 16,
+                  marginTop: 18,
+                }}
+              >
+                <span className="muted">{category.description}</span>
+                <span style={{ color: "var(--purple-2)", fontWeight: 900 }}>
+                  VER →
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="container" style={{ padding: "82px 0 30px" }}>
+        <SectionHeader
+          eyebrow="LO QUE MÁS GUSTA"
+          title="MÁS VENDIDAS"
+          description="Una selección de las camisetas que más están buscando los aficionados."
+          action={
+            <Link
+              href="/catalogo"
+              style={{
+                color: "#d6a6ff",
+                fontWeight: 900,
+                letterSpacing: ".04em",
+              }}
+            >
+              VER TODO →
+            </Link>
+          }
+        />
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))",
+            gap: 18,
+            marginTop: 28,
+          }}
+        >
+          {products.slice(0, 8).map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      </section>
+
+      {secondaryFeatured && (
+        <section className="container" style={{ padding: "78px 0 20px" }}>
+          <div
+            style={{
+              position: "relative",
+              minHeight: 450,
+              display: "grid",
+              gridTemplateColumns: "minmax(0,.9fr) minmax(320px,1.1fr)",
+              alignItems: "center",
+              gap: 30,
+              overflow: "hidden",
+              padding: "clamp(28px,6vw,70px)",
+              border: "1px solid rgba(195,92,255,.15)",
+              borderRadius: 32,
+              background:
+                "radial-gradient(circle at 70% 50%, rgba(139,44,255,.40), transparent 28rem), linear-gradient(135deg,#111116,#0a0a0e)",
+            }}
+          >
+            <div style={{ position: "relative", zIndex: 2 }}>
+              <span
+                style={{
+                  color: "#d6a6ff",
+                  fontSize: 11,
+                  fontWeight: 900,
+                  letterSpacing: ".14em",
+                }}
+              >
+                HAZLA TUYA
+              </span>
+
+              <h2
+                style={{
+                  maxWidth: 620,
+                  margin: "12px 0 18px",
+                  fontSize: "clamp(3rem,7vw,6.4rem)",
+                }}
+              >
+                NOMBRE.
+                <br />
+                DORSAL.
+                <br />
+                <span style={{ color: "var(--purple-2)" }}>PARCHE.</span>
+              </h2>
+
+              <p
+                className="muted"
+                style={{ maxWidth: 520, fontSize: 18, lineHeight: 1.6 }}
+              >
+                Personaliza tu camiseta desde la ficha del producto y mira el
+                precio actualizado al instante.
+              </p>
+
+              <Link
+                href={`/producto/${secondaryFeatured.slug}`}
+                className="btn-primary"
+                style={{ marginTop: 22 }}
+              >
+                PERSONALIZAR AHORA
+              </Link>
+            </div>
+
+            <img
+              src={
+                secondaryFeatured.images[1] ||
+                secondaryFeatured.images[0] ||
+                "/placeholder-shirt-back.svg"
+              }
+              alt={`${secondaryFeatured.name}, vista trasera`}
+              style={{
+                width: "100%",
+                height: 390,
+                objectFit: "contain",
+                filter: "drop-shadow(0 35px 36px rgba(0,0,0,.62))",
+              }}
+            />
+          </div>
+        </section>
+      )}
+
+      <section className="container" style={{ padding: "88px 0 26px" }}>
+        <SectionHeader
+          eyebrow="COMPRA CON CONFIANZA"
+          title="POR QUÉ CAMISFUTMADRID"
+          description="Todo pensado para que elegir y personalizar tu camiseta sea fácil."
+        />
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))",
+            gap: 16,
+            marginTop: 28,
+          }}
+        >
+          {BENEFITS.map((benefit, index) => (
+            <article
+              key={benefit.title}
+              className="card"
+              style={{
+                minHeight: 220,
+                padding: 26,
+                background:
+                  "linear-gradient(180deg,rgba(255,255,255,.018),transparent),var(--surface)",
+              }}
+            >
+              <span
+                style={{
+                  display: "grid",
+                  width: 42,
+                  height: 42,
+                  placeItems: "center",
+                  borderRadius: 12,
+                  background: "rgba(139,44,255,.14)",
+                  color: "#d6a6ff",
+                  fontFamily: "var(--font-display)",
+                  fontSize: 18,
+                  fontWeight: 900,
+                }}
+              >
+                0{index + 1}
+              </span>
+
+              <h3 style={{ margin: "24px 0 10px", fontSize: 29 }}>
+                {benefit.title}
+              </h3>
+
+              <p className="muted" style={{ margin: 0, lineHeight: 1.65 }}>
+                {benefit.text}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="container" style={{ padding: "88px 0 96px" }}>
+        <div
+          style={{
+            position: "relative",
+            overflow: "hidden",
+            padding: "clamp(36px,8vw,84px)",
+            border: "1px solid rgba(195,92,255,.18)",
+            borderRadius: 32,
+            textAlign: "center",
+            background:
+              "radial-gradient(circle at 50% 0%, rgba(139,44,255,.42), transparent 30rem), #111116",
+          }}
+        >
+          <span
+            style={{
+              color: "#d6a6ff",
+              fontSize: 11,
+              fontWeight: 900,
+              letterSpacing: ".14em",
+            }}
+          >
+            TU PRÓXIMA CAMISETA ESTÁ AQUÍ
+          </span>
+
+          <h2
+            style={{
+              maxWidth: 850,
+              margin: "14px auto 18px",
+              fontSize: "clamp(3.2rem,8vw,7.4rem)",
+            }}
+          >
+            ELIGE TU EQUIPO.
+            <br />
+            <span style={{ color: "var(--purple-2)" }}>NOSOTROS HACEMOS EL RESTO.</span>
+          </h2>
+
+          <p
+            className="muted"
+            style={{
+              maxWidth: 620,
+              margin: "0 auto",
+              fontSize: 18,
+              lineHeight: 1.65,
+            }}
+          >
+            Explora el catálogo, personaliza tu modelo y prepara la camiseta
+            para el próximo partido.
+          </p>
+
+          <Link className="btn-primary" href="/catalogo" style={{ marginTop: 26 }}>
+            IR AL CATÁLOGO
+          </Link>
         </div>
       </section>
     </main>
+  );
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <div>
+      <strong
+        style={{
+          display: "block",
+          fontFamily: "var(--font-display)",
+          fontSize: 27,
+          lineHeight: 1,
+        }}
+      >
+        {value}
+      </strong>
+      <span
+        className="muted"
+        style={{
+          display: "block",
+          marginTop: 5,
+          fontSize: 10,
+          fontWeight: 900,
+          letterSpacing: ".1em",
+        }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function SectionHeader({
+  eyebrow,
+  title,
+  description,
+  action,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-end",
+        gap: 20,
+        flexWrap: "wrap",
+      }}
+    >
+      <div>
+        <span
+          style={{
+            color: "#d6a6ff",
+            fontSize: 11,
+            fontWeight: 900,
+            letterSpacing: ".14em",
+          }}
+        >
+          {eyebrow}
+        </span>
+
+        <h2
+          style={{
+            margin: "8px 0 10px",
+            fontSize: "clamp(2.8rem,7vw,5.5rem)",
+          }}
+        >
+          {title}
+        </h2>
+
+        <p className="muted" style={{ maxWidth: 630, margin: 0, lineHeight: 1.6 }}>
+          {description}
+        </p>
+      </div>
+
+      {action}
+    </div>
   );
 }
