@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/components/cart-provider";
 import { createClient } from "@/lib/supabase/client";
 import { GlobalProductSearch } from "@/components/global-product-search";
+import { useFavorites } from "@/components/favorites-provider";
 
 const NAV_ITEMS = [
   { href: "/catalogo", label: "Catálogo" },
@@ -18,6 +19,7 @@ export function Header() {
   const { itemCount } = useCart();
   const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
+  const { favoriteCount } = useFavorites();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -145,6 +147,18 @@ export function Header() {
           </button>
 
           <Link
+            href="/favoritos"
+            className="iconButton favoriteButton"
+            aria-label="Favoritos"
+            title="Favoritos"
+          >
+            <HeartIcon />
+            {favoriteCount > 0 && (
+              <span className="favoriteCount">{favoriteCount}</span>
+            )}
+          </Link>
+
+          <Link
             href="/cuenta"
             className="iconButton accountButton"
             aria-label="Mi cuenta"
@@ -192,6 +206,11 @@ export function Header() {
                 <span aria-hidden="true">→</span>
               </Link>
             ))}
+
+            <Link href="/favoritos">
+              <span>Favoritos{favoriteCount > 0 ? ` (${favoriteCount})` : ""}</span>
+              <span aria-hidden="true">→</span>
+            </Link>
 
             <div className="mobileDivider" />
 
@@ -425,6 +444,30 @@ export function Header() {
           background: rgba(195, 92, 255, 0.08);
         }
 
+        .favoriteButton {
+          position: relative;
+        }
+
+        .favoriteCount {
+          position: absolute;
+          top: -5px;
+          right: -5px;
+          display: grid;
+          min-width: 20px;
+          height: 20px;
+          place-items: center;
+          padding: 0 5px;
+          border: 2px solid #08080b;
+          border-radius: 999px;
+          background: linear-gradient(135deg, #ff4f8a, #ff77a6);
+          color: white;
+          font-family: var(--font-body);
+          font-size: 10px;
+          font-weight: 900;
+          line-height: 1;
+          box-shadow: 0 6px 16px rgba(255, 79, 138, 0.28);
+        }
+
         .adminButton {
           display: inline-flex;
           min-height: 34px;
@@ -562,7 +605,31 @@ export function Header() {
           }
 
           .accountButton,
-          .adminButton {
+          .favoriteButton {
+          position: relative;
+        }
+
+        .favoriteCount {
+          position: absolute;
+          top: -5px;
+          right: -5px;
+          display: grid;
+          min-width: 20px;
+          height: 20px;
+          place-items: center;
+          padding: 0 5px;
+          border: 2px solid #08080b;
+          border-radius: 999px;
+          background: linear-gradient(135deg, #ff4f8a, #ff77a6);
+          color: white;
+          font-family: var(--font-body);
+          font-size: 10px;
+          font-weight: 900;
+          line-height: 1;
+          box-shadow: 0 6px 16px rgba(255, 79, 138, 0.28);
+        }
+
+        .adminButton {
             display: none;
           }
 
@@ -741,6 +808,26 @@ function SearchIcon() {
         stroke="currentColor"
         strokeWidth="1.8"
         strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function HeartIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );
