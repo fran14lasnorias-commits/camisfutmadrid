@@ -684,3 +684,43 @@
     height: 275px !important;
   }
 }
+
+
+/* ===== RENDIMIENTO MÓVIL =====
+   En móvil quitamos animaciones/filtros caros para que los toques respondan al instante. */
+@media (max-width: 820px) {
+  .heroContent,
+  .heroBadge,
+  .heroTitle,
+  .heroText,
+  .heroActions,
+  .heroStats,
+  .featuredCard,
+  .featuredImage,
+  .glowPulse,
+  .sectionReveal,
+  .productGrid,
+  .personalizationImage,
+  .categoryImage {
+    animation: none !important;
+    transition: none !important;
+    filter: none !important;
+  }
+
+  .featuredCard,
+  .categoryCard,
+  .personalizationCard,
+  .benefitCard,
+  .ctaCard {
+    box-shadow: none !important;
+    transition: none !important;
+  }
+
+  .featuredCard:hover,
+  .categoryCard:hover,
+  .personalizationCard:hover,
+  .benefitCard:hover,
+  .ctaCard:hover {
+    transform: none !important;
+  }
+}
