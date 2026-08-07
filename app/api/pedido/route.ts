@@ -3,6 +3,18 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
+type PublicOrderRow = {
+  number: string;
+  status: string;
+  total_eur: number | string;
+  carrier: string | null;
+  tracking_number: string | null;
+  tracking_url: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
+  shipping_address: unknown;
+};
+
 function serviceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -46,20 +58,10 @@ export async function POST(request: Request) {
 
     const supabase = serviceClient();
 
-    const { data: order, error } = await supabase
+    const { data, error } = await supabase
       .from("orders")
       .select(
-        [
-          "number",
-          "status",
-          "total_eur",
-          "carrier",
-          "tracking_number",
-          "tracking_url",
-          "shipped_at",
-          "delivered_at",
-          "shipping_address",
-        ].join(",")
+        "number,status,total_eur,carrier,tracking_number,tracking_url,shipped_at,delivered_at,shipping_address"
       )
       .eq("number", orderNumber)
       .maybeSingle();
@@ -72,12 +74,14 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!order) {
+    if (!data) {
       return NextResponse.json(
         { error: "No encontramos un pedido con esos datos." },
         { status: 404 }
       );
     }
+
+    const order = data as unknown as PublicOrderRow;
 
     const shippingAddress = order.shipping_address as {
       email?: string;
