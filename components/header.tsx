@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { href: "/catalogo", label: "Catálogo" },
   { href: "/catalogo?team=selecciones", label: "Selecciones" },
   { href: "/catalogo?type=retro", label: "Retro" },
-  { href: "/catalogo?sort=price_asc", label: "Ofertas" },
+  { href: "/ofertas", label: "Ofertas" },
 ];
 
 export function Header() {
