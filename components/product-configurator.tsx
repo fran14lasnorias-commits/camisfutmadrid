@@ -6,6 +6,7 @@ import { Archivo_Black, Barlow_Condensed, Bebas_Neue, Rajdhani } from "next/font
 import { useRouter } from "next/navigation";
 import type { Product } from "@/lib/products";
 import { useCart } from "@/components/cart-provider";
+import { VirtualTryOn } from "@/components/virtual-try-on";
 import styles from "./product-configurator.module.css";
 
 const PERSONALIZATION_PRICE_EUR = 4;
@@ -476,6 +477,11 @@ export function ProductConfigurator({ product }: { product: Product }) {
         </div>
 
         {error && <p className={styles.error} role="alert">{error}</p>}
+
+<VirtualTryOn
+  imageUrl={frontImage}
+  productName={product.name}
+/>
 
         <button
           type="button"
