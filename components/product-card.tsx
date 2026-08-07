@@ -3,32 +3,54 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Product } from "@/lib/products";
-import { useFavorites } from "@/components/favorites-provider";
-import { PRODUCT_TYPE_BADGES } from "@/lib/product-types";
+
+const TYPE_LABELS: Record<Product["type"], string> = {
+  fan: "FAN",
+  player: "PLAYER",
+  retro: "RETRO",
+  kids: "NIÑO",
+};
+
+const TYPE_COLORS: Record<Product["type"], { color: string; background: string; border: string }> = {
+  fan: {
+    color: "#d8b4ff",
+    background: "rgba(139,44,255,.12)",
+    border: "rgba(195,92,255,.24)",
+  },
+  player: {
+    color: "#9ce6ff",
+    background: "rgba(56,189,248,.10)",
+    border: "rgba(56,189,248,.24)",
+  },
+  retro: {
+    color: "#ffd08a",
+    background: "rgba(255,184,77,.10)",
+    border: "rgba(255,184,77,.24)",
+  },
+  kids: {
+    color: "#8af3b7",
+    background: "rgba(61,222,138,.10)",
+    border: "rgba(61,222,138,.24)",
+  },
+};
 
 export function ProductCard({ product }: { product: Product }) {
   const [hovered, setHovered] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
-  const { isFavorite, toggleFavorite, hydrated } = useFavorites();
 
   const primaryImage = product.images[0] || "/placeholder-shirt.svg";
   const secondaryImage = product.images[1] || primaryImage;
   const activeImage = hovered ? secondaryImage : primaryImage;
-  const badge = PRODUCT_TYPE_BADGES[product.type];
-  const favorite = hydrated && isFavorite(product.id);
-  const onSale =
-    typeof product.originalPrice === "number" &&
-    product.originalPrice > product.price;
-  const discountPercent = onSale
-    ? Math.round(
-        ((product.originalPrice! - product.price) / product.originalPrice!) * 100
-      )
-    : 0;
+  const badge = TYPE_COLORS[product.type];
 
   return (
     <article
       className="card"
-      onMouseEnter={() => setHovered(true)}
+      onMouseEnter={() => {
+        if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+          setHovered(true);
+        }
+      }}
       onMouseLeave={() => setHovered(false)}
       style={{
         position: "relative",
@@ -46,49 +68,6 @@ export function ProductCard({ product }: { product: Product }) {
           "linear-gradient(180deg,rgba(255,255,255,.018),transparent),var(--surface)",
       }}
     >
-      <button
-        type="button"
-        aria-label={
-          favorite
-            ? `Quitar ${product.name} de favoritos`
-            : `Añadir ${product.name} a favoritos`
-        }
-        aria-pressed={favorite}
-        onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          toggleFavorite(product.id);
-        }}
-        style={{
-          position: "absolute",
-          top: 13,
-          right: 13,
-          zIndex: 8,
-          display: "grid",
-          width: 42,
-          height: 42,
-          placeItems: "center",
-          padding: 0,
-          border: favorite
-            ? "1px solid rgba(255,103,151,.40)"
-            : "1px solid rgba(255,255,255,.12)",
-          borderRadius: "50%",
-          background: favorite
-            ? "rgba(255,70,130,.16)"
-            : "rgba(8,8,12,.68)",
-          color: favorite ? "#ff6f9d" : "#ffffff",
-          backdropFilter: "blur(12px)",
-          boxShadow: favorite
-            ? "0 8px 24px rgba(255,70,130,.18)"
-            : "0 8px 20px rgba(0,0,0,.22)",
-          cursor: "pointer",
-          transition:
-            "transform 160ms ease, background 160ms ease, color 160ms ease",
-        }}
-      >
-        <HeartIcon filled={favorite} />
-      </button>
-
       <Link
         href={`/producto/${product.slug}`}
         aria-label={`Ver ${product.name}`}
@@ -123,34 +102,11 @@ export function ProductCard({ product }: { product: Product }) {
               fontSize: 12,
               fontWeight: 900,
               letterSpacing: ".08em",
-              backdropFilter: "blur(12px)",
+              
             }}
           >
-            {badge.label}
+            {TYPE_LABELS[product.type]}
           </span>
-
-          {onSale && (
-            <span
-              style={{
-                position: "absolute",
-                top: 50,
-                left: 14,
-                zIndex: 4,
-                display: "inline-flex",
-                padding: "6px 9px",
-                borderRadius: 999,
-                background: "rgba(255,72,105,.16)",
-                border: "1px solid rgba(255,72,105,.34)",
-                color: "#ff9aaa",
-                fontSize: 11,
-                fontWeight: 900,
-                letterSpacing: ".06em",
-                backdropFilter: "blur(12px)",
-              }}
-            >
-              OFERTA · -{discountPercent}%
-            </span>
-          )}
 
           <span
             aria-hidden="true"
@@ -159,8 +115,8 @@ export function ProductCard({ product }: { product: Product }) {
               inset: "auto 18% 8% 18%",
               height: 28,
               borderRadius: "50%",
-              background: "rgba(0,0,0,.42)",
-              filter: "blur(18px)",
+              background: "rgba(0,0,0,.20)",
+              filter: "none",
               opacity: hovered ? 0.78 : 0.54,
               transform: hovered ? "scale(1.06)" : "scale(1)",
               transition: "opacity 220ms ease, transform 220ms ease",
@@ -199,11 +155,8 @@ export function ProductCard({ product }: { product: Product }) {
                 transform: hovered
                   ? "translateY(-7px) scale(1.055)"
                   : "translateY(0) scale(1)",
-                filter: hovered
-                  ? "drop-shadow(0 32px 28px rgba(0,0,0,.68)) drop-shadow(0 0 18px rgba(195,92,255,.10))"
-                  : "drop-shadow(0 25px 24px rgba(0,0,0,.58))",
-                transition:
-                  "transform 360ms cubic-bezier(.2,.8,.2,1), filter 260ms ease, opacity 180ms ease",
+                filter: "none",
+            transition: "transform 240ms cubic-bezier(.2,.8,.2,1), opacity 160ms ease",
               }}
             />
           )}
@@ -223,7 +176,7 @@ export function ProductCard({ product }: { product: Product }) {
               border: "1px solid rgba(255,255,255,.09)",
               borderRadius: 13,
               background: "rgba(8,8,12,.76)",
-              backdropFilter: "blur(14px)",
+              
               opacity: hovered ? 1 : 0,
               transform: hovered ? "translateY(0)" : "translateY(8px)",
               transition:
@@ -309,24 +262,9 @@ export function ProductCard({ product }: { product: Product }) {
                 Desde
               </span>
 
-              {onSale && (
-                <span
-                  style={{
-                    display: "block",
-                    marginBottom: 4,
-                    color: "#777783",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    textDecoration: "line-through",
-                  }}
-                >
-                  {product.originalPrice!.toFixed(2).replace(".", ",")} €
-                </span>
-              )}
-
               <strong
                 style={{
-                  color: onSale ? "#ff8aa8" : "var(--purple-2)",
+                  color: "var(--purple-2)",
                   fontFamily: "var(--font-display)",
                   fontSize: 27,
                   lineHeight: 1,
@@ -359,25 +297,5 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
       </Link>
     </article>
-  );
-}
-
-function HeartIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg
-      width="21"
-      height="21"
-      viewBox="0 0 24 24"
-      fill={filled ? "currentColor" : "none"}
-      aria-hidden="true"
-    >
-      <path
-        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
