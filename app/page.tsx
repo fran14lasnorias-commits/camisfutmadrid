@@ -114,7 +114,7 @@ const BENEFITS = [
 ];
 
 export default async function HomePage() {
-  const products = await getPublishedProducts({ limit: 80 });
+  const products = await getPublishedProducts();
   const featured = products[0];
   const secondaryFeatured = products[1] ?? featured;
 
@@ -162,7 +162,7 @@ export default async function HomePage() {
         />
 
         <div
-          className="container"
+          className={`container ${motionStyles.heroGrid}`}
           style={{
             position: "relative",
             zIndex: 1,
