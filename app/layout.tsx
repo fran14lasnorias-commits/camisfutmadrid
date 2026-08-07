@@ -5,6 +5,7 @@ import "./globals.css";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { CartProvider } from "@/components/cart-provider";
+import { FavoritesProvider } from "@/components/favorites-provider";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -48,24 +49,26 @@ export default function RootLayout({
     >
       <body>
         <CartProvider>
-          <div
-            style={{
-              background: "linear-gradient(90deg,#5511b5,#9c2cff)",
-              padding: "9px 16px",
-              textAlign: "center",
-              fontSize: 13,
-              fontWeight: 800,
-              letterSpacing: ".04em",
-            }}
-          >
-            ENVÍO GRATIS · ENTREGA EN MANO EN MADRID · PAGO SEGURO
-          </div>
+          <FavoritesProvider>
+            <div
+              style={{
+                background: "linear-gradient(90deg,#5511b5,#9c2cff)",
+                padding: "9px 16px",
+                textAlign: "center",
+                fontSize: 13,
+                fontWeight: 800,
+                letterSpacing: ".04em",
+              }}
+            >
+              ENVÍO GRATIS · ENTREGA EN MANO EN MADRID · PAGO SEGURO
+            </div>
 
-          <Header />
+            <Header />
 
-          {children}
+            {children}
 
-          <Footer />
+            <Footer />
+          </FavoritesProvider>
         </CartProvider>
       </body>
     </html>
