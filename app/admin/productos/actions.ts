@@ -12,9 +12,9 @@ import {
 const ProductIdsSchema = z
   .array(z.string().uuid())
   .min(1, "Selecciona al menos un producto.")
-  .max(2000, "Puedes gestionar como máximo 2.000 productos cada vez.");
+  .max(10000, "Puedes gestionar como máximo 10.000 productos cada vez.");
 
-const BULK_BATCH_SIZE = 100;
+const BULK_BATCH_SIZE = 200;
 
 function splitIntoBatches<T>(items: T[], size = BULK_BATCH_SIZE) {
   const batches: T[][] = [];
