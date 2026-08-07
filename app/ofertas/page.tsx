@@ -3,46 +3,30 @@ import Link from "next/link";
 import { ProductCard } from "@/components/product-card";
 import { WeeklyCountdown } from "@/components/weekly-countdown";
 import { getPublishedProducts } from "@/lib/catalog";
-import type { Product } from "@/lib/products";
 
 export const metadata: Metadata = {
-  title: "Ofertas y selección semanal",
+  title: "Ofertas",
   description:
-    "Descubre la selección semanal de camisetas de fútbol de CamisfutMadrid.",
+    "Camisetas de fútbol rebajadas en CamisfutMadrid. Precios reales de oferta mientras estén activos.",
   alternates: {
     canonical: "/ofertas",
   },
 };
 
-function weekSeed() {
-  const now = new Date();
-  const yearStart = new Date(now.getFullYear(), 0, 1);
-  const day = Math.floor(
-    (now.getTime() - yearStart.getTime()) / 86_400_000
-  );
-  return Math.floor(day / 7) + now.getFullYear() * 53;
-}
-
-function selectWeeklyProducts(products: Product[], count = 12) {
-  if (products.length <= count) return products;
-
-  const seed = weekSeed();
-
-  return [...products]
-    .map((product, index) => ({
-      product,
-      rank:
-        ((index + 1) * 9301 + seed * 49297 + product.id.length * 233) %
-        233280,
-    }))
-    .sort((a, b) => a.rank - b.rank)
-    .slice(0, count)
-    .map(({ product }) => product);
-}
-
 export default async function OffersPage() {
   const products = await getPublishedProducts();
-  const weekly = selectWeeklyProducts(products, 12);
+  const offers = products.filter(
+    (product) =>
+      typeof product.originalPrice === "number" &&
+      product.originalPrice > product.price
+  );
+
+  const bestDiscount = offers.reduce((best, product) => {
+    const discount = Math.round(
+      ((product.originalPrice! - product.price) / product.originalPrice!) * 100
+    );
+    return Math.max(best, discount);
+  }, 0);
 
   return (
     <main>
@@ -56,23 +40,8 @@ export default async function OffersPage() {
         }}
       >
         <div
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px)",
-            backgroundSize: "42px 42px",
-            maskImage:
-              "linear-gradient(to bottom,rgba(0,0,0,.7),transparent 92%)",
-          }}
-        />
-
-        <div
           className="container"
           style={{
-            position: "relative",
-            zIndex: 1,
             display: "grid",
             gridTemplateColumns:
               "repeat(auto-fit,minmax(min(340px,100%),1fr))",
@@ -86,16 +55,16 @@ export default async function OffersPage() {
               style={{
                 display: "inline-flex",
                 padding: "8px 11px",
-                border: "1px solid rgba(195,92,255,.25)",
+                border: "1px solid rgba(255,72,105,.28)",
                 borderRadius: 999,
-                background: "rgba(139,44,255,.10)",
-                color: "#e0bfff",
+                background: "rgba(255,72,105,.10)",
+                color: "#ff9aaa",
                 fontSize: 11,
                 fontWeight: 900,
                 letterSpacing: ".13em",
               }}
             >
-              SELECCIÓN SEMANAL
+              PRECIOS REBAJADOS REALES
             </span>
 
             <h1
@@ -107,7 +76,7 @@ export default async function OffersPage() {
             >
               FLASH
               <br />
-              <span style={{ color: "var(--purple-2)" }}>WEEK.</span>
+              <span style={{ color: "var(--purple-2)" }}>SALE.</span>
             </h1>
 
             <p
@@ -119,9 +88,11 @@ export default async function OffersPage() {
                 lineHeight: 1.65,
               }}
             >
-              Cada semana destacamos una nueva selección de camisetas del
-              catálogo. Los precios que ves son siempre los precios reales de
-              la tienda.
+              {offers.length > 0
+                ? `${offers.length} productos rebajados${
+                    bestDiscount > 0 ? ` · hasta -${bestDiscount}%` : ""
+                  }. El precio que ves es el que se cobra en carrito y checkout.`
+                : "Ahora mismo no hay productos rebajados. Activa una oferta desde el panel de productos."}
             </p>
 
             <div
@@ -132,10 +103,11 @@ export default async function OffersPage() {
                 marginTop: 26,
               }}
             >
-              <a href="#seleccion" className="btn-primary">
-                VER SELECCIÓN
-              </a>
-
+              {offers.length > 0 && (
+                <a href="#ofertas" className="btn-primary">
+                  VER OFERTAS
+                </a>
+              )}
               <Link href="/catalogo" className="btn-secondary">
                 TODO EL CATÁLOGO
               </Link>
@@ -151,7 +123,6 @@ export default async function OffersPage() {
               borderColor: "rgba(195,92,255,.20)",
               background:
                 "linear-gradient(180deg,rgba(139,44,255,.09),transparent),rgba(17,17,22,.78)",
-              backdropFilter: "blur(16px)",
             }}
           >
             <div>
@@ -163,9 +134,8 @@ export default async function OffersPage() {
                   letterSpacing: ".14em",
                 }}
               >
-                NUEVA SELECCIÓN EN
+                SELECCIÓN SEMANAL
               </span>
-
               <h2 style={{ margin: "7px 0 0", fontSize: 38 }}>
                 DOMINGO · 23:59
               </h2>
@@ -174,86 +144,19 @@ export default async function OffersPage() {
             <WeeklyCountdown />
 
             <p className="muted" style={{ margin: 0, lineHeight: 1.55 }}>
-              Al terminar la semana, la selección cambia automáticamente.
+              Puedes cambiar o quitar los precios rebajados desde Admin cuando
+              quieras.
             </p>
           </div>
         </div>
       </section>
 
       <section
-        id="seleccion"
+        id="ofertas"
         className="container"
         style={{ padding: "74px 0 92px" }}
       >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            gap: 18,
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <span
-              style={{
-                color: "#d6a6ff",
-                fontSize: 11,
-                fontWeight: 900,
-                letterSpacing: ".14em",
-              }}
-            >
-              ESTA SEMANA
-            </span>
-
-            <h2
-              style={{
-                margin: "8px 0 8px",
-                fontSize: "clamp(3rem,8vw,6rem)",
-              }}
-            >
-              12 DESTACADAS
-            </h2>
-
-            <p className="muted" style={{ margin: 0 }}>
-              Una selección que cambia cada semana sin tocar tu catálogo.
-            </p>
-          </div>
-
-          <Link
-            href="/catalogo?sort=price_asc"
-            style={{ color: "#d6a6ff", fontWeight: 900 }}
-          >
-            VER POR PRECIO →
-          </Link>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit,minmax(min(260px,100%),1fr))",
-            gap: 18,
-            marginTop: 28,
-          }}
-        >
-          {weekly.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      </section>
-
-      <section className="container" style={{ padding: "0 0 96px" }}>
-        <div
-          className="card"
-          style={{
-            padding: "clamp(28px,7vw,70px)",
-            textAlign: "center",
-            borderColor: "rgba(195,92,255,.18)",
-            background:
-              "radial-gradient(circle at 50% 0%,rgba(139,44,255,.28),transparent 26rem),var(--surface)",
-          }}
-        >
+        <div>
           <span
             style={{
               color: "#d6a6ff",
@@ -262,25 +165,42 @@ export default async function OffersPage() {
               letterSpacing: ".14em",
             }}
           >
-            ¿NO ESTÁ AQUÍ LA TUYA?
+            OFERTAS ACTIVAS
           </span>
 
           <h2
             style={{
-              maxWidth: 850,
-              margin: "12px auto 18px",
-              fontSize: "clamp(3rem,8vw,6.6rem)",
+              margin: "8px 0 8px",
+              fontSize: "clamp(3rem,8vw,6rem)",
             }}
           >
-            HAY CIENTOS MÁS
-            <br />
-            <span style={{ color: "var(--purple-2)" }}>ESPERÁNDOTE.</span>
+            PRECIO ANTES → AHORA
           </h2>
-
-          <Link href="/catalogo" className="btn-primary">
-            EXPLORAR CATÁLOGO
-          </Link>
         </div>
+
+        {offers.length ? (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit,minmax(min(260px,100%),1fr))",
+              gap: 18,
+              marginTop: 28,
+            }}
+          >
+            {offers.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        ) : (
+          <div className="card" style={{ padding: 28, marginTop: 28 }}>
+            <strong>No hay ofertas activas todavía.</strong>
+            <p className="muted" style={{ marginBottom: 0 }}>
+              En Admin → Productos, pon por ejemplo Precio de venta 25 € y
+              Precio anterior 30 €. Aparecerá aquí automáticamente.
+            </p>
+          </div>
+        )}
       </section>
     </main>
   );
