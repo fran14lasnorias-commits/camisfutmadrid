@@ -588,3 +588,99 @@
     width: 70%;
   }
 }
+
+
+/* ===== FIX REAL DEL HERO EN MÓVIL ===== */
+@media (max-width: 980px) {
+  .heroGrid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: min(100% - 28px, 1180px) !important;
+    gap: 28px !important;
+    padding-top: 34px !important;
+    padding-bottom: 46px !important;
+  }
+
+  .heroContent {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .heroTitle {
+    width: 100%;
+    max-width: 100% !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    white-space: normal;
+  }
+
+  .heroText {
+    width: 100%;
+    max-width: 100% !important;
+  }
+
+  .featuredCard {
+    width: 100% !important;
+    max-width: 620px;
+    min-height: 440px !important;
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .heroGrid {
+    width: min(100% - 24px, 1180px) !important;
+    gap: 22px !important;
+    padding-top: 26px !important;
+    padding-bottom: 34px !important;
+  }
+
+  .heroBadge {
+    max-width: 100%;
+    font-size: 9px !important;
+    letter-spacing: .07em !important;
+  }
+
+  .heroTitle {
+    margin: 16px 0 14px !important;
+    font-size: clamp(2.8rem, 14.5vw, 4.1rem) !important;
+    line-height: .84 !important;
+    letter-spacing: -.02em !important;
+    overflow-wrap: normal !important;
+    word-break: keep-all !important;
+  }
+
+  .heroText {
+    font-size: 15px !important;
+    line-height: 1.5 !important;
+  }
+
+  .heroActions {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 9px !important;
+    margin-top: 20px !important;
+  }
+
+  .heroActions :global(.btn-primary),
+  .heroActions :global(.btn-secondary) {
+    width: 100%;
+  }
+
+  .heroStats {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px !important;
+    margin-top: 22px !important;
+    padding-top: 16px !important;
+  }
+
+  .featuredCard {
+    min-height: 380px !important;
+    border-radius: 22px !important;
+  }
+
+  .featuredImage {
+    width: 92% !important;
+    height: 275px !important;
+  }
+}
