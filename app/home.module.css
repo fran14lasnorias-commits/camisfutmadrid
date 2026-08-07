@@ -357,3 +357,234 @@
     transition: none !important;
   }
 }
+
+
+/* ---------- Responsive layout: móvil y tablet ---------- */
+
+.heroGrid {
+  grid-template-columns: minmax(0, 1.02fr) minmax(320px, .98fr);
+}
+
+.categoryGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.personalizationCard {
+  grid-template-columns: minmax(0, .9fr) minmax(320px, 1.1fr);
+}
+
+.heroContent,
+.featuredCard,
+.categoryCard,
+.categoryContent,
+.personalizationCard,
+.benefitCard,
+.ctaCard {
+  min-width: 0;
+}
+
+.heroTitle,
+.categoryTitle,
+.personalizationTitle,
+.ctaTitle {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 980px) {
+  .heroGrid {
+    grid-template-columns: 1fr;
+    gap: 34px !important;
+    padding-top: 52px !important;
+    padding-bottom: 58px !important;
+  }
+
+  .featuredCard {
+    width: min(100%, 620px);
+    min-height: 500px !important;
+    margin-inline: auto;
+  }
+
+  .featuredImage {
+    height: 390px !important;
+  }
+
+  .personalizationCard {
+    grid-template-columns: 1fr;
+    min-height: 0 !important;
+  }
+
+  .personalizationImage {
+    height: 340px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .categoryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .categoryCard {
+    min-height: 230px !important;
+  }
+
+  .categoryContent {
+    max-width: 72%;
+  }
+
+  .categoryTitle {
+    font-size: clamp(2.65rem, 14vw, 4.7rem) !important;
+  }
+
+  .heroActions {
+    width: 100%;
+  }
+
+  .heroActions :global(.btn-primary),
+  .heroActions :global(.btn-secondary) {
+    flex: 1 1 180px;
+  }
+
+  .heroStats {
+    gap: 16px !important;
+  }
+
+  .personalizationTitle,
+  .ctaTitle {
+    font-size: clamp(2.7rem, 13vw, 5rem) !important;
+    line-height: .9 !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .heroGrid {
+    width: min(100% - 20px, 1180px) !important;
+    gap: 24px !important;
+    padding-top: 36px !important;
+    padding-bottom: 42px !important;
+  }
+
+  .heroBadge {
+    max-width: 100%;
+    padding: 7px 9px !important;
+    font-size: 10px !important;
+    letter-spacing: .08em !important;
+  }
+
+  .heroTitle {
+    max-width: 100% !important;
+    margin: 18px 0 16px !important;
+    font-size: clamp(3rem, 16vw, 4.4rem) !important;
+    line-height: .84 !important;
+    letter-spacing: -.015em !important;
+  }
+
+  .heroText {
+    font-size: 16px !important;
+    line-height: 1.55 !important;
+  }
+
+  .heroActions {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 9px !important;
+    margin-top: 22px !important;
+  }
+
+  .heroActions :global(.btn-primary),
+  .heroActions :global(.btn-secondary) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .heroStats {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0,1fr));
+    gap: 8px !important;
+    margin-top: 24px !important;
+    padding-top: 18px !important;
+  }
+
+  .featuredCard {
+    min-height: 390px !important;
+    border-radius: 22px !important;
+  }
+
+  .featuredImage {
+    width: 92% !important;
+    height: 280px !important;
+  }
+
+  .glowPulse {
+    width: 88% !important;
+  }
+
+  .categoryCard {
+    min-height: 205px !important;
+    padding: 20px !important;
+    border-radius: 20px !important;
+  }
+
+  .categoryImage {
+    right: -62px;
+    width: 64%;
+    height: 78%;
+    opacity: .48;
+  }
+
+  .categoryShade {
+    background:
+      linear-gradient(90deg, rgba(17,17,22,.99) 0%, rgba(17,17,22,.92) 52%, rgba(17,17,22,.46) 78%, rgba(17,17,22,.22) 100%),
+      linear-gradient(0deg, rgba(8,8,11,.46), transparent 55%);
+  }
+
+  .categoryContent {
+    max-width: 76%;
+  }
+
+  .categoryTitle {
+    font-size: clamp(2.5rem, 15vw, 4rem) !important;
+  }
+
+  .personalizationCard {
+    padding: 26px 18px !important;
+    border-radius: 22px !important;
+  }
+
+  .personalizationImage {
+    height: 270px !important;
+  }
+
+  .benefitCard {
+    min-height: 0 !important;
+    padding: 20px !important;
+  }
+
+  .ctaCard {
+    padding: 34px 18px !important;
+    border-radius: 22px !important;
+  }
+
+  .ctaTitle {
+    font-size: clamp(2.5rem, 13vw, 4.2rem) !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .heroTitle {
+    font-size: clamp(2.7rem, 15vw, 3.7rem) !important;
+  }
+
+  .heroStats {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+
+  .categoryContent {
+    max-width: 82%;
+  }
+
+  .categoryImage {
+    right: -72px;
+    width: 70%;
+  }
+}
