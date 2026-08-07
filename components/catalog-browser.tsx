@@ -6,7 +6,6 @@ import { ProductCard } from "@/components/product-card";
 import type { Product } from "@/lib/products";
 import { PRODUCT_TYPE_FILTER_OPTIONS, PRODUCT_TYPE_LABELS } from "@/lib/product-types";
 
-const PRODUCTS_PER_BATCH = 24;
 
 const QUERY_ALIASES: Record<string, string[]> = {
   mbappe: ["mbape", "embape", "mbappé", "mbappe"],
@@ -98,7 +97,6 @@ export function CatalogBrowser({
   const [query, setQuery] = useState("");
   const [team, setTeam] = useState(initialTeam);
   const [type, setType] = useState<"Todos" | Product["type"]>(initialType);
-  const [visibleCount, setVisibleCount] = useState(PRODUCTS_PER_BATCH);
   const [searchFocused, setSearchFocused] = useState(false);
   const [sort, setSort] = useState<"relevance" | "price_asc" | "price_desc" | "name">("relevance");
 
@@ -196,12 +194,35 @@ export function CatalogBrowser({
     }
   }
 
-  useEffect(() => {
-    setVisibleCount(PRODUCTS_PER_BATCH);
-  }, [query, team, type, season, sort]);
 
-  const visibleProducts = filteredProducts.slice(0, visibleCount);
-  const hasMoreProducts = visibleCount < filteredProducts.length;
+  const groupedProducts = useMemo(
+    () =>
+      PRODUCT_TYPE_FILTER_OPTIONS
+        .map((option) => ({
+          type: option.value,
+          label: option.label,
+          products: filteredProducts.filter(
+            (product) => product.type === option.value
+          ),
+        }))
+        .filter((group) => group.products.length > 0),
+    [filteredProducts]
+  );
+
+  const [sectionLimits, setSectionLimits] = useState<
+    Partial<Record<Product["type"], number>>
+  >({});
+
+  function sectionLimit(productType: Product["type"]) {
+    return sectionLimits[productType] ?? 12;
+  }
+
+  function showMoreInSection(productType: Product["type"]) {
+    setSectionLimits((current) => ({
+      ...current,
+      [productType]: (current[productType] ?? 12) + 12,
+    }));
+  }
 
   const filtersAreActive =
     query.trim() !== "" ||
@@ -581,7 +602,7 @@ export function CatalogBrowser({
               className="muted"
               style={{ display: "block", marginTop: 4, fontSize: 13 }}
             >
-              Mostrando {visibleProducts.length} de {filteredProducts.length}
+              Organizadas automáticamente por tipo
             </span>
           )}
         </div>
@@ -598,18 +619,141 @@ export function CatalogBrowser({
       </div>
 
       {filteredProducts.length ? (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(min(260px,100%),1fr))",
-            gap: 18,
-            marginTop: 18,
-          }}
-        >
-          {visibleProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        <>
+          {groupedProducts.length > 1 && (
+            <nav
+              aria-label="Secciones del catálogo"
+              style={{
+                display: "flex",
+                gap: 9,
+                flexWrap: "wrap",
+                marginTop: 22,
+              }}
+            >
+              {groupedProducts.map((group) => (
+                <a
+                  key={group.type}
+                  href={`#seccion-${group.type}`}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 7,
+                    padding: "9px 12px",
+                    border: "1px solid rgba(195,92,255,.18)",
+                    borderRadius: 999,
+                    background: "rgba(139,44,255,.07)",
+                    color: "#e4ccff",
+                    fontFamily: "var(--font-display)",
+                    fontSize: 14,
+                    fontWeight: 800,
+                    letterSpacing: ".03em",
+                  }}
+                >
+                  {group.label}
+                  <span
+                    style={{
+                      color: "var(--muted)",
+                      fontFamily: "var(--font-body)",
+                      fontSize: 11,
+                    }}
+                  >
+                    {group.products.length}
+                  </span>
+                </a>
+              ))}
+            </nav>
+          )}
+
+          <div style={{ display: "grid", gap: 54, marginTop: 28 }}>
+            {groupedProducts.map((group) => {
+              const limit = sectionLimit(group.type);
+              const visible = group.products.slice(0, limit);
+              const remaining = group.products.length - visible.length;
+
+              return (
+                <section
+                  key={group.type}
+                  id={`seccion-${group.type}`}
+                  style={{ scrollMarginTop: 130 }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-end",
+                      gap: 16,
+                      flexWrap: "wrap",
+                      marginBottom: 18,
+                      paddingBottom: 14,
+                      borderBottom: "1px solid rgba(255,255,255,.08)",
+                    }}
+                  >
+                    <div>
+                      <span
+                        style={{
+                          color: "#d6a6ff",
+                          fontSize: 10,
+                          fontWeight: 900,
+                          letterSpacing: ".14em",
+                        }}
+                      >
+                        SECCIÓN
+                      </span>
+
+                      <h2
+                        style={{
+                          margin: "4px 0 0",
+                          fontFamily: "var(--font-display)",
+                          fontSize: "clamp(2.2rem,5vw,4rem)",
+                          lineHeight: 1,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {group.label}
+                      </h2>
+                    </div>
+
+                    <span className="muted" style={{ fontSize: 13 }}>
+                      {group.products.length}{" "}
+                      {group.products.length === 1 ? "producto" : "productos"}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(auto-fit,minmax(min(260px,100%),1fr))",
+                      gap: 18,
+                    }}
+                  >
+                    {visible.map((product) => (
+                      <ProductCard key={product.id} product={product} />
+                    ))}
+                  </div>
+
+                  {remaining > 0 && (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        marginTop: 22,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => showMoreInSection(group.type)}
+                      >
+                        VER 12 MÁS DE {group.label.toUpperCase()} · {remaining} RESTANTES
+                      </button>
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        </>
       ) : (
         <div className="card" style={{ padding: 28, marginTop: 18 }}>
           <h2 style={{ marginTop: 0 }}>No encontramos esa camiseta</h2>
@@ -622,27 +766,6 @@ export function CatalogBrowser({
             className="btn-primary"
           >
             VER TODO EL CATÁLOGO
-          </button>
-        </div>
-      )}
-
-      {hasMoreProducts && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            marginTop: 28,
-          }}
-        >
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() =>
-              setVisibleCount((current) => current + PRODUCTS_PER_BATCH)
-            }
-            style={{ minWidth: 230 }}
-          >
-            MOSTRAR 24 MÁS
           </button>
         </div>
       )}
