@@ -5,26 +5,22 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/components/cart-provider";
 import { createClient } from "@/lib/supabase/client";
-import { GlobalProductSearch } from "@/components/global-product-search";
-import { useFavorites } from "@/components/favorites-provider";
 
 const NAV_ITEMS = [
   { href: "/catalogo", label: "Catálogo" },
   { href: "/catalogo?team=selecciones", label: "Selecciones" },
   { href: "/catalogo?type=retro", label: "Retro" },
-  { href: "/ofertas", label: "Ofertas" },
+  { href: "/catalogo?sort=price_asc", label: "Ofertas" },
 ];
 
 export function Header() {
   const { itemCount } = useCart();
   const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
-  const { favoriteCount } = useFavorites();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -133,29 +129,13 @@ export function Header() {
         </nav>
 
         <div className="actions">
-          <button
-            type="button"
+          <Link
+            href="/catalogo"
             className="iconButton"
             aria-label="Buscar productos"
             title="Buscar"
-            onClick={() => {
-              setMenuOpen(false);
-              setSearchOpen(true);
-            }}
           >
             <SearchIcon />
-          </button>
-
-          <Link
-            href="/favoritos"
-            className="iconButton favoriteButton"
-            aria-label="Favoritos"
-            title="Favoritos"
-          >
-            <HeartIcon />
-            {favoriteCount > 0 && (
-              <span className="favoriteCount">{favoriteCount}</span>
-            )}
           </Link>
 
           <Link
@@ -207,11 +187,6 @@ export function Header() {
               </Link>
             ))}
 
-            <Link href="/favoritos">
-              <span>Favoritos{favoriteCount > 0 ? ` (${favoriteCount})` : ""}</span>
-              <span aria-hidden="true">→</span>
-            </Link>
-
             <div className="mobileDivider" />
 
             <Link href="/cuenta">
@@ -228,11 +203,6 @@ export function Header() {
           </div>
         </div>
       )}
-
-      <GlobalProductSearch
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-      />
 
       <style jsx>{`
         .header {
@@ -421,9 +391,6 @@ export function Header() {
         }
 
         .iconButton {
-          appearance: none;
-          padding: 0;
-          cursor: pointer;
           display: grid;
           width: 42px;
           height: 42px;
@@ -442,30 +409,6 @@ export function Header() {
           transform: translateY(-1px);
           border-color: rgba(195, 92, 255, 0.34);
           background: rgba(195, 92, 255, 0.08);
-        }
-
-        .favoriteButton {
-          position: relative;
-        }
-
-        .favoriteCount {
-          position: absolute;
-          top: -5px;
-          right: -5px;
-          display: grid;
-          min-width: 20px;
-          height: 20px;
-          place-items: center;
-          padding: 0 5px;
-          border: 2px solid #08080b;
-          border-radius: 999px;
-          background: linear-gradient(135deg, #ff4f8a, #ff77a6);
-          color: white;
-          font-family: var(--font-body);
-          font-size: 10px;
-          font-weight: 900;
-          line-height: 1;
-          box-shadow: 0 6px 16px rgba(255, 79, 138, 0.28);
         }
 
         .adminButton {
@@ -605,31 +548,7 @@ export function Header() {
           }
 
           .accountButton,
-          .favoriteButton {
-          position: relative;
-        }
-
-        .favoriteCount {
-          position: absolute;
-          top: -5px;
-          right: -5px;
-          display: grid;
-          min-width: 20px;
-          height: 20px;
-          place-items: center;
-          padding: 0 5px;
-          border: 2px solid #08080b;
-          border-radius: 999px;
-          background: linear-gradient(135deg, #ff4f8a, #ff77a6);
-          color: white;
-          font-family: var(--font-body);
-          font-size: 10px;
-          font-weight: 900;
-          line-height: 1;
-          box-shadow: 0 6px 16px rgba(255, 79, 138, 0.28);
-        }
-
-        .adminButton {
+          .adminButton {
             display: none;
           }
 
@@ -788,6 +707,35 @@ export function Header() {
             padding: 5px 6px;
           }
         }
+
+        @media (max-width: 880px) {
+          .header {
+            background: #08080b;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            transition: none;
+          }
+
+          .headerScrolled {
+            background: #08080b;
+            box-shadow: none;
+          }
+
+          .headerInner,
+          .headerScrolled .headerInner,
+          .logoShell,
+          .headerScrolled .logoShell,
+          .iconButton,
+          .menuButton {
+            transition: none;
+          }
+
+          .mobileMenu {
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+          }
+        }
+
       `}</style>
     </header>
   );
@@ -808,26 +756,6 @@ function SearchIcon() {
         stroke="currentColor"
         strokeWidth="1.8"
         strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function HeartIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
       />
     </svg>
   );
