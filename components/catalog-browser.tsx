@@ -132,23 +132,21 @@ export function CatalogBrowser({
             <label htmlFor="catalog-type" style={labelStyle}>
               TIPO
             </label>
-            <select
-              id="catalog-type"
-              value={type}
-              onChange={(event) => setType(event.target.value)}
-              style={inputStyle}
-            >
-              <option value="Todos">Todos</option>
-<option value="fan">Fan</option>
-<option value="player">Player</option>
-<option value="retro">Retro</option>
-<option value="kids">Niño</option>
-<option value="polo">Polo</option>
-<option value="adult_kit">Kit adulto</option>
-<option value="shorts">Pantalón</option>
-<option value="socks">Medias</option>
-<option value="training">Entrenamiento</option>
-            </select>
+           <select
+  id="catalog-type"
+  value={type}
+  onChange={(event) => setType(event.target.value)}
+  style={inputStyle}
+>
+  <option value="Todos">Todos</option>
+  <option value="fan">Fan</option>
+  <option value="player">Player</option>
+  <option value="retro">Retro</option>
+  <option value="kids">Niño</option>
+  <option value="polo">Polo</option>
+  <option value="shorts">Pantalón</option>
+  <option value="training">Entrenamiento</option>
+</select>
           </div>
 
           <div>
