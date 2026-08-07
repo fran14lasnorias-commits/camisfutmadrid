@@ -10,6 +10,7 @@ type ProductRow = {
   season: string | null;
   type: Product["type"];
   price_eur: number | string;
+  original_price_eur: number | string | null;
   supplier_cost_usd: number | string;
   product_images?: Array<{ url: string; position: number }> | null;
   product_variants?: Array<{ size: string; stock: number }> | null;
@@ -37,6 +38,11 @@ function mapProduct(row: ProductRow): Product {
     season: row.season ?? "",
     type: row.type,
     price: Number(row.price_eur),
+    originalPrice:
+      row.original_price_eur != null &&
+      Number(row.original_price_eur) > Number(row.price_eur)
+        ? Number(row.original_price_eur)
+        : undefined,
     costUsd: Number(row.supplier_cost_usd),
     images: images.length ? images : ["/placeholder-shirt.svg", "/placeholder-shirt-back.svg"],
     sizes: sizes.length ? sizes : ["S", "M", "L", "XL", "2XL", "3XL", "4XL"],
@@ -51,6 +57,7 @@ const productSelect = `
   season,
   type,
   price_eur,
+  original_price_eur,
   supplier_cost_usd,
   product_images(url,position),
   product_variants(size,stock)
