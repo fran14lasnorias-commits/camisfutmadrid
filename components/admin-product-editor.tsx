@@ -12,6 +12,7 @@ type EditorProduct = {
   season: string | null;
   type: string;
   price_eur: number;
+  original_price_eur: number | null;
   supplier_cost_usd: number;
   description: string | null;
   supplier_url: string | null;
@@ -44,6 +45,10 @@ export function AdminProductEditor({ product }: { product: EditorProduct }) {
         season:String(formData.get("season") ?? ""),
         type:String(formData.get("type") ?? "fan"),
         priceEur:Number(formData.get("priceEur") ?? 0),
+        originalPriceEur:
+          String(formData.get("originalPriceEur") ?? "").trim() === ""
+            ? null
+            : Number(formData.get("originalPriceEur")),
         supplierCostUsd:Number(formData.get("supplierCostUsd") ?? 0),
         description:String(formData.get("description") ?? ""),
         supplierUrl:String(formData.get("supplierUrl") ?? ""),
@@ -217,6 +222,18 @@ export function AdminProductEditor({ product }: { product: EditorProduct }) {
               <strong style={{color:"white"}}>
                 {Number(product.price_eur).toFixed(2).replace(".",",")} €
               </strong>
+              {product.original_price_eur &&
+                Number(product.original_price_eur) > Number(product.price_eur) && (
+                  <span
+                    style={{
+                      marginLeft:8,
+                      color:"#7f7f8c",
+                      textDecoration:"line-through",
+                    }}
+                  >
+                    {Number(product.original_price_eur).toFixed(2).replace(".",",")} €
+                  </span>
+                )}
             </span>
           </div>
         </div>
@@ -251,8 +268,43 @@ export function AdminProductEditor({ product }: { product: EditorProduct }) {
               <option value="nba">NBA</option>
             </select>
             <input name="supplierUrl" defaultValue={product.supplier_url ?? ""} style={input}/>
-            <input name="priceEur" type="number" step="0.01" defaultValue={product.price_eur} style={input}/>
-            <input name="supplierCostUsd" type="number" step="0.01" defaultValue={product.supplier_cost_usd} style={input}/>
+            <label style={{display:"grid",gap:6}}>
+              <span className="muted" style={{fontSize:12}}>Precio de venta</span>
+              <input
+                name="priceEur"
+                type="number"
+                min="0.01"
+                step="0.01"
+                defaultValue={product.price_eur}
+                style={input}
+              />
+            </label>
+
+            <label style={{display:"grid",gap:6}}>
+              <span className="muted" style={{fontSize:12}}>
+                Precio anterior (oferta)
+              </span>
+              <input
+                name="originalPriceEur"
+                type="number"
+                min="0.01"
+                step="0.01"
+                defaultValue={product.original_price_eur ?? ""}
+                placeholder="Ej. 30.00"
+                style={input}
+              />
+            </label>
+
+            <label style={{display:"grid",gap:6}}>
+              <span className="muted" style={{fontSize:12}}>Coste proveedor USD</span>
+              <input
+                name="supplierCostUsd"
+                type="number"
+                step="0.01"
+                defaultValue={product.supplier_cost_usd}
+                style={input}
+              />
+            </label>
           </div>
 
           <textarea name="description" defaultValue={product.description ?? ""} rows={4} style={input}/>
