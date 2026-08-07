@@ -46,9 +46,30 @@ const CatalogSaveSchema = z.object({
 });
 
 type CatalogAlbum = z.infer<typeof CatalogAlbumSchema>;
-type ProductType = "fan" | "player" | "retro";
+type ProductType =
+  | "fan"
+  | "player"
+  | "retro"
+  | "kids"
+  | "adult_kit"
+  | "polo"
+  | "shorts"
+  | "socks"
+  | "training";
 
-const SIZES = ["S", "M", "L", "XL", "2XL", "3XL", "4XL"];
+const ADULT_SIZES = ["S", "M", "L", "XL", "2XL", "3XL", "4XL"];
+const KIDS_SIZES = ["16", "18", "20", "22", "24", "26", "28"];
+
+function sizesFor(type: ProductType) {
+  return type === "kids" ? KIDS_SIZES : ADULT_SIZES;
+}
+
+const NBA_PATTERN =
+  /\b(nba|basketball|lakers|celtics|warriors|bulls|knicks|nets|76ers|sixers|raptors|bucks|cavaliers|cavs|pacers|pistons|heat|magic|hawks|hornets|wizards|nuggets|timberwolves|thunder|trail\s*blazers|blazers|jazz|clippers|suns|kings|mavericks|mavs|rockets|grizzlies|pelicans|spurs)\b/i;
+
+function isNbaProduct(title: string) {
+  return NBA_PATTERN.test(title);
+}
 
 async function checkAdmin() {
   const supabase = await createClient();
@@ -102,9 +123,33 @@ async function checkAdmin() {
 function detectType(title: string): ProductType {
   const value = title.toLowerCase();
 
-  if (/\bplayer(?:\s+version)?\b/.test(value)) return "player";
-  if (/\bretro\b/.test(value)) return "retro";
+  // Orden importante: primero categorías específicas.
+  if (/\b(kids?|children|youth)\b/.test(value)) return "kids";
 
+  if (
+    /\b(adult\s*(kit|set)|adult\s*jersey\s*\+\s*shorts?|jersey\s*\+\s*shorts?|shirt\s*\+\s*shorts?|soccer\s*(kit|set))\b/.test(
+      value
+    )
+  ) {
+    return "adult_kit";
+  }
+
+  if (
+    /\b(training\s*(kit|set|suit)|tracksuit|track\s*suit|training|pre[-\s]?match|warm[-\s]?up|windbreaker|jacket|hoodie|coat|thermal)\b/.test(
+      value
+    )
+  ) {
+    return "training";
+  }
+
+  if (/\b(polo|t-?shirt|casual\s*shirt)\b/.test(value)) return "polo";
+  if (/\b(shorts?|short\s*pants?)\b/.test(value)) return "shorts";
+  if (/\b(socks?|stockings?)\b/.test(value)) return "socks";
+  if (/\bplayer(?:\s+version)?\b/.test(value)) return "player";
+  if (/\bretro|classic|vintage\b/.test(value)) return "retro";
+
+  // Jersey, Home, Away, Third, portero y cualquier prenda no reconocida
+  // entran como Fan para no perder productos.
   return "fan";
 }
 
@@ -121,28 +166,33 @@ function detectSeason(title: string) {
     return `20${twoDigit[1]}/${twoDigit[2]}`;
   }
 
+  const singleYear = title.match(/\b(20\d{2})\b/);
+
+  if (singleYear) {
+    return singleYear[1];
+  }
+
   return "";
 }
 
 function detectTeam(title: string, season: string) {
-  const seasonPatterns = [
-    /\b20\d{2}\s*[/\- ]\s*\d{2,4}\b/,
-    /\b2\d\s*[/\- ]\s*2\d\b/,
-  ];
-
   let team = title;
 
-  for (const pattern of seasonPatterns) {
-    const match = pattern.exec(title);
+  team = team
+    .replace(/\b20\d{2}\s*[/\- ]\s*\d{2,4}\b/g, " ")
+    .replace(/\b2\d\s*[/\- ]\s*2\d\b/g, " ");
 
-    if (match?.index !== undefined) {
-      team = title.slice(0, match.index);
-      break;
-    }
+  if (/^20\d{2}$/.test(season)) {
+    team = team.replace(new RegExp(`\\b${season}\\b`, "g"), " ");
   }
 
   team = team
-    .replace(/\b(home|away|third|goalkeeper|gk|player|version|retro|jersey)\b/gi, " ")
+    .replace(
+      /\b(home|away|third|goalkeeper|gk|player|version|retro|classic|vintage|jersey|kids?|children|youth|size|adult|kit|set|polo|t-?shirt|training|tracksuit|pre[-\s]?match|warm[-\s]?up|shorts?|socks?)\b/gi,
+      " "
+    )
+    .replace(/\b1[68]\s*[-–]\s*28\b/gi, " ")
+    .replace(/\b(?:XS|S|M|L|XL|2XL|3XL|4XL|5XL)\s*[-–]\s*(?:XL|2XL|3XL|4XL|5XL)\b/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
 
@@ -163,18 +213,33 @@ function detectVariant(title: string) {
 function priceFor(type: ProductType) {
   if (type === "player") return 27;
   if (type === "retro") return 28;
+  if (type === "kids") return 29;
+  if (type === "polo") return 27;
+  if (type === "training") return 55;
+  if (type === "adult_kit") return 30;
+
+  // Sin precio específico indicado: se mantiene la tarifa base.
   return 25;
 }
 
 function supplierCostFor(type: ProductType) {
   if (type === "player") return 15;
   if (type === "retro") return 14;
+
+  // Para categorías nuevas no inventamos el coste del proveedor:
+  // se deja el valor base hasta que se revise en Admin.
   return 10;
 }
 
 function labelFor(type: ProductType) {
   if (type === "player") return "Player";
   if (type === "retro") return "Retro";
+  if (type === "kids") return "Niño";
+  if (type === "adult_kit") return "Kit adulto";
+  if (type === "polo") return "Polo";
+  if (type === "shorts") return "Pantalón";
+  if (type === "socks") return "Medias";
+  if (type === "training") return "Kit entrenamiento";
   return "Fan";
 }
 
@@ -212,109 +277,15 @@ function proxyImageUrl(sourceUrl: string | null, refererUrl: string) {
   return `/api/yupoo-image?u=${source}&r=${referer}`;
 }
 
-async function removeCatalogDuplicates(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  albums: CatalogAlbum[],
-  requestedLimit: number
-) {
-  if (!albums.length) {
-    return {
-      albums: [] as CatalogAlbum[],
-      hidden: 0,
-    };
-  }
-
-  const prepared = albums.map((album) => ({
-    album,
-    details: buildProductDetails(album),
-  }));
-
-  const supplierUrls = Array.from(
-    new Set(prepared.map(({ album }) => album.sourceUrl))
-  );
-
-  const productNames = Array.from(
-    new Set(prepared.map(({ details }) => details.name))
-  );
-
-  const [
-    { data: existingByUrl, error: urlError },
-    { data: existingByName, error: nameError },
-  ] = await Promise.all([
-    supplierUrls.length
-      ? supabase
-          .from("products")
-          .select("supplier_url")
-          .in("supplier_url", supplierUrls)
-      : Promise.resolve({ data: [], error: null }),
-    productNames.length
-      ? supabase
-          .from("products")
-          .select("name")
-          .in("name", productNames)
-      : Promise.resolve({ data: [], error: null }),
-  ]);
-
-  if (urlError) throw new Error(urlError.message);
-  if (nameError) throw new Error(nameError.message);
-
-  const existingUrls = new Set(
-    (existingByUrl ?? [])
-      .map((row: { supplier_url: string | null }) => row.supplier_url)
-      .filter((value): value is string => Boolean(value))
-  );
-
-  const existingNames = new Set(
-    (existingByName ?? []).map((row: { name: string }) =>
-      row.name.trim().toLocaleLowerCase("es")
-    )
-  );
-
-  const seenUrls = new Set<string>();
-  const seenProductKeys = new Set<string>();
-  const uniqueAlbums: CatalogAlbum[] = [];
-
-  for (const { album, details } of prepared) {
-    const normalizedName = details.name
-      .trim()
-      .toLocaleLowerCase("es");
-
-    const productKey = [
-      normalizedName,
-      details.type,
-      details.season,
-    ].join("|");
-
-    const alreadyImported =
-      existingUrls.has(album.sourceUrl) ||
-      existingNames.has(normalizedName);
-
-    const repeatedInPage =
-      seenUrls.has(album.sourceUrl) ||
-      seenProductKeys.has(productKey);
-
-    if (alreadyImported || repeatedInPage) {
-      continue;
-    }
-
-    seenUrls.add(album.sourceUrl);
-    seenProductKeys.add(productKey);
-    uniqueAlbums.push(album);
-  }
-
-  const visibleAlbums = uniqueAlbums.slice(0, requestedLimit);
-
-  return {
-    albums: visibleAlbums,
-    hidden: albums.length - uniqueAlbums.length,
-  };
-}
-
 async function saveCatalogDrafts(
   supabase: Awaited<ReturnType<typeof createClient>>,
   albums: CatalogAlbum[]
 ) {
-  const drafts = albums.map(buildProductDetails);
+  const safeAlbums = albums.filter(
+    (album) => !isNbaProduct(album.title)
+  );
+  const blockedNba = albums.length - safeAlbums.length;
+  const drafts = safeAlbums.map(buildProductDetails);
   const supplierUrls = drafts.map(({ album }) => album.sourceUrl);
   const slugs = drafts.map(({ slug }) => slug);
 
@@ -350,7 +321,8 @@ async function saveCatalogDrafts(
   if (!newDrafts.length) {
     return {
       imported: 0,
-      skipped,
+      skipped: skipped + blockedNba,
+      blockedNba,
       names: [] as string[],
     };
   }
@@ -365,6 +337,7 @@ async function saveCatalogDrafts(
         season: draft.season || null,
         type: draft.type,
         price_eur: draft.priceEur,
+        original_price_eur: draft.priceEur + 5,
         supplier_cost_usd: draft.supplierCostUsd,
         description: draft.description,
         supplier_url: draft.album.sourceUrl,
@@ -413,12 +386,15 @@ async function saveCatalogDrafts(
       .from("product_variants")
       .insert(
         insertedProducts.flatMap(
-          (product: { id: string }) =>
-            SIZES.map((size) => ({
+          (product: { id: string; slug: string }) => {
+            const draft = draftBySlug.get(product.slug)!;
+
+            return sizesFor(draft.type).map((size) => ({
               product_id: product.id,
               size,
               stock: 1000,
-            }))
+            }));
+          }
         )
       );
 
@@ -430,7 +406,8 @@ async function saveCatalogDrafts(
 
   return {
     imported: insertedProducts.length,
-    skipped,
+    skipped: skipped + blockedNba,
+    blockedNba,
     names: newDrafts.map((draft) => draft.name),
   };
 }
@@ -486,40 +463,13 @@ export async function POST(request: Request) {
         limit: Number(source.limit ?? 25),
       });
 
-      // Leemos el máximo de la página para poder ocultar repetidos
-      // y seguir mostrando tantas camisetas nuevas como sea posible.
-      const batch = await readYupooCatalogBatch({
-        ...input,
-        limit: 50,
-      });
+      const batch = await readYupooCatalogBatch(input);
 
-      const filtered = await removeCatalogDuplicates(
-        auth.supabase,
-        batch.eligible as CatalogAlbum[],
-        input.limit
-      );
-
-      const warnings = [...batch.warnings];
-
-      if (filtered.hidden > 0) {
-        warnings.unshift(
-          `${filtered.hidden} productos repetidos o ya importados se han ocultado.`
-        );
-      }
-
-      return NextResponse.json(
-        {
-          ...batch,
-          eligible: filtered.albums,
-          duplicatesHidden: filtered.hidden,
-          warnings,
+      return NextResponse.json(batch, {
+        headers: {
+          "Cache-Control": "no-store",
         },
-        {
-          headers: {
-            "Cache-Control": "no-store",
-          },
-        }
-      );
+      });
     }
 
     if (source.mode === "catalog-save") {
