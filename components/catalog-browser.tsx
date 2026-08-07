@@ -106,6 +106,7 @@ export function CatalogBrowser({
   const [type, setType] = useState<"Todos" | Product["type"]>(initialType);
   const [visibleCount, setVisibleCount] = useState(PRODUCTS_PER_BATCH);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [sort, setSort] = useState<"relevance" | "price_asc" | "price_desc" | "name">("relevance");
 
   const teams = useMemo(
     () =>
@@ -114,6 +115,20 @@ export function CatalogBrowser({
       ),
     [products]
   );
+
+  const seasons = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          products
+            .map((product) => product.season)
+            .filter((value): value is string => Boolean(value))
+        )
+      ).sort((a, b) => b.localeCompare(a, "es")),
+    [products]
+  );
+
+  const [season, setSeason] = useState("Todas");
 
   const filteredProducts = useMemo(() => {
     return products
@@ -125,16 +140,31 @@ export function CatalogBrowser({
         const matchesQuery = !query.trim() || score > 0;
         const matchesTeam = team === "Todos" || product.team === team;
         const matchesType = type === "Todos" || product.type === type;
+        const matchesSeason =
+          season === "Todas" || product.season === season;
 
-        return matchesQuery && matchesTeam && matchesType;
+        return matchesQuery && matchesTeam && matchesType && matchesSeason;
       })
-      .sort(
-        (a, b) =>
+      .sort((a, b) => {
+        if (sort === "price_asc") {
+          return a.product.price - b.product.price;
+        }
+
+        if (sort === "price_desc") {
+          return b.product.price - a.product.price;
+        }
+
+        if (sort === "name") {
+          return a.product.name.localeCompare(b.product.name, "es");
+        }
+
+        return (
           b.score - a.score ||
           a.product.name.localeCompare(b.product.name, "es")
-      )
+        );
+      })
       .map(({ product }) => product);
-  }, [products, query, team, type]);
+  }, [products, query, team, type, season, sort]);
 
   const suggestions = useMemo(
     () => (query.trim() ? filteredProducts.slice(0, 5) : []),
@@ -163,6 +193,8 @@ export function CatalogBrowser({
     setQuery("");
     setTeam("Todos");
     setType("Todos");
+    setSeason("Todas");
+    setSort("relevance");
     setSearchFocused(false);
 
     if (typeof window !== "undefined") {
@@ -172,16 +204,87 @@ export function CatalogBrowser({
 
   useEffect(() => {
     setVisibleCount(PRODUCTS_PER_BATCH);
-  }, [query, team, type]);
+  }, [query, team, type, season, sort]);
 
   const visibleProducts = filteredProducts.slice(0, visibleCount);
   const hasMoreProducts = visibleCount < filteredProducts.length;
 
   const filtersAreActive =
-    query.trim() !== "" || team !== "Todos" || type !== "Todos";
+    query.trim() !== "" ||
+    team !== "Todos" ||
+    type !== "Todos" ||
+    season !== "Todas" ||
+    sort !== "relevance";
 
   return (
     <section>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-end",
+          gap: 18,
+          flexWrap: "wrap",
+          marginTop: 18,
+        }}
+      >
+        <div>
+          <span
+            style={{
+              color: "#d6a6ff",
+              fontSize: 11,
+              fontWeight: 900,
+              letterSpacing: ".14em",
+            }}
+          >
+            ENCUENTRA TU CAMISETA
+          </span>
+
+          <h1
+            style={{
+              margin: "8px 0 8px",
+              fontSize: "clamp(3rem,8vw,6.6rem)",
+              lineHeight: .86,
+            }}
+          >
+            CATÁLOGO
+          </h1>
+
+          <p className="muted" style={{ margin: 0 }}>
+            {products.length} modelos disponibles
+          </p>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          {["Real Madrid", "Barcelona", "España"].map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setQuery(item)}
+              style={{
+                padding: "9px 12px",
+                border: "1px solid rgba(255,255,255,.08)",
+                borderRadius: 999,
+                background: "rgba(255,255,255,.03)",
+                color: "#e7e7ee",
+                fontFamily: "var(--font-display)",
+                fontSize: 14,
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div
         className="card"
         style={{
@@ -354,7 +457,7 @@ export function CatalogBrowser({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+            gridTemplateColumns: "repeat(auto-fit,minmax(min(210px,100%),1fr))",
             gap: 14,
           }}
         >
@@ -390,6 +493,34 @@ export function CatalogBrowser({
             <option value="player">Player</option>
             <option value="retro">Retro</option>
             <option value="kids">Niño</option>
+          </FilterSelect>
+
+          <FilterSelect
+            id="catalog-season"
+            label="Temporada"
+            value={season}
+            onChange={setSeason}
+          >
+            <option value="Todas">Todas las temporadas</option>
+            {seasons.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </FilterSelect>
+
+          <FilterSelect
+            id="catalog-sort"
+            label="Ordenar"
+            value={sort}
+            onChange={(value) =>
+              setSort(value as "relevance" | "price_asc" | "price_desc" | "name")
+            }
+          >
+            <option value="relevance">Relevancia</option>
+            <option value="price_asc">Precio: menor a mayor</option>
+            <option value="price_desc">Precio: mayor a menor</option>
+            <option value="name">Nombre A–Z</option>
           </FilterSelect>
         </div>
 
@@ -475,7 +606,7 @@ export function CatalogBrowser({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
+            gridTemplateColumns: "repeat(auto-fit,minmax(min(260px,100%),1fr))",
             gap: 18,
             marginTop: 18,
           }}
