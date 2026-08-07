@@ -23,6 +23,11 @@ type CatalogBatch = {
 const DEFAULT_CATALOG =
   "https://y199111.x.yupoo.com/categories/";
 
+const MAX_TOTAL_PRODUCTS = 10_000;
+const MAX_PAGES_TO_SCAN = 500;
+const PAGE_REQUEST_LIMIT = 50;
+const SAVE_CHUNK_SIZE = 100;
+
 function encodeHex(value: string) {
   return Array.from(new TextEncoder().encode(value))
     .map((byte) => byte.toString(16).padStart(2, "0"))
@@ -75,8 +80,8 @@ function YupooCover({ album }: { album: Album }) {
 
 export function YupooCatalogImporter() {
   const [url, setUrl] = useState(DEFAULT_CATALOG);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(25);
+  const [scanProgress, setScanProgress] = useState("");
+  const [saveProgress, setSaveProgress] = useState("");
   const [batch, setBatch] = useState<CatalogBatch | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -85,6 +90,7 @@ export function YupooCatalogImporter() {
   const [saveResult, setSaveResult] = useState<{
     imported: number;
     skipped: number;
+    blockedNba?: number;
     names: string[];
   } | null>(null);
 
@@ -106,37 +112,118 @@ export function YupooCatalogImporter() {
     setSaveResult(null);
     setBatch(null);
     setSelected([]);
+    setScanProgress("Preparando lectura completa del catálogo...");
 
     try {
-      const response = await fetch("/api/admin/import", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          mode: "catalog",
-          url,
-          page,
-          limit,
-        }),
-      });
+      const eligibleById = new Map<string, Album>();
+      const excludedById = new Map<string, Album>();
+      const warnings = new Set<string>();
 
-      const data = await response.json();
+      let totalDiscovered = 0;
+      let lastPage = 0;
+      let consecutivePagesWithoutNewProducts = 0;
 
-      if (!response.ok) {
-        throw new Error(
-          data.error ?? "No se pudo leer el catálogo de Yupoo."
+      for (
+        let currentPage = 1;
+        currentPage <= MAX_PAGES_TO_SCAN &&
+        eligibleById.size < MAX_TOTAL_PRODUCTS;
+        currentPage += 1
+      ) {
+        setScanProgress(
+          `Leyendo página ${currentPage} · ${eligibleById.size.toLocaleString("es-ES")} productos encontrados`
         );
+
+        const response = await fetch("/api/admin/import", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            mode: "catalog",
+            url,
+            page: currentPage,
+            limit: PAGE_REQUEST_LIMIT,
+          }),
+        });
+
+        const data: CatalogBatch & { error?: string } = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ?? `No se pudo leer la página ${currentPage} de Yupoo.`
+          );
+        }
+
+        lastPage = currentPage;
+        totalDiscovered += Number(data.discovered ?? 0);
+
+        let newOnThisPage = 0;
+
+        for (const album of data.eligible ?? []) {
+          if (
+            !eligibleById.has(album.albumId) &&
+            !excludedById.has(album.albumId)
+          ) {
+            eligibleById.set(album.albumId, album);
+            newOnThisPage += 1;
+          }
+
+          if (eligibleById.size >= MAX_TOTAL_PRODUCTS) break;
+        }
+
+        for (const album of data.excluded ?? []) {
+          if (
+            !eligibleById.has(album.albumId) &&
+            !excludedById.has(album.albumId)
+          ) {
+            excludedById.set(album.albumId, album);
+          }
+        }
+
+        for (const warning of data.warnings ?? []) {
+          warnings.add(warning);
+        }
+
+        if ((data.discovered ?? 0) === 0 || newOnThisPage === 0) {
+          consecutivePagesWithoutNewProducts += 1;
+        } else {
+          consecutivePagesWithoutNewProducts = 0;
+        }
+
+        // Dos páginas seguidas sin álbumes nuevos = fin real del catálogo
+        // o paginación que Yupoo ha empezado a repetir.
+        if (consecutivePagesWithoutNewProducts >= 2) {
+          break;
+        }
       }
 
-      setBatch(data);
-      setSelected(data.eligible.map((album: Album) => album.albumId));
+      const eligible = [...eligibleById.values()].slice(
+        0,
+        MAX_TOTAL_PRODUCTS
+      );
+      const excluded = [...excludedById.values()];
+
+      const mergedBatch: CatalogBatch = {
+        catalogUrl: url,
+        page: lastPage || 1,
+        discovered: eligible.length + excluded.length,
+        eligible,
+        excluded,
+        warnings: [...warnings],
+      };
+
+      setBatch(mergedBatch);
+      setSelected(eligible.map((album) => album.albumId));
+      setScanProgress(
+        `Lectura completa: ${eligible.length.toLocaleString("es-ES")} productos válidos · ${excluded.length.toLocaleString("es-ES")} NBA/baloncesto apartados · ${lastPage} páginas revisadas`
+      );
     } catch (error) {
       setMessage(
         error instanceof Error
           ? error.message
-          : "No se pudo leer el catálogo."
+          : "No se pudo leer el catálogo completo."
       );
+      setScanProgress("");
     } finally {
       setLoading(false);
     }
@@ -145,42 +232,93 @@ export function YupooCatalogImporter() {
   async function saveSelectedDrafts() {
     if (!selectedAlbums.length || saving) return;
 
+    if (selectedAlbums.length > MAX_TOTAL_PRODUCTS) {
+      setMessage(
+        `El máximo por importación es ${MAX_TOTAL_PRODUCTS.toLocaleString("es-ES")} productos.`
+      );
+      return;
+    }
+
     setSaving(true);
     setMessage("");
     setSaveResult(null);
+    setSaveProgress("Preparando importación...");
 
     try {
-      const response = await fetch("/api/admin/import", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          mode: "catalog-save",
-          albums: selectedAlbums.map((album) => ({
-            albumId: album.albumId,
-            sourceUrl: album.sourceUrl,
-            title: album.title,
-            coverImage: album.coverImage,
-          })),
-        }),
-      });
+      let imported = 0;
+      let skipped = 0;
+      let blockedNba = 0;
+      const names: string[] = [];
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.error ?? "No se pudieron guardar los borradores."
+      // Un solo clic para el usuario; por dentro se guarda en tandas pequeñas
+      // para no agotar el tiempo ni el tamaño máximo de una petición.
+      for (
+        let start = 0;
+        start < selectedAlbums.length;
+        start += SAVE_CHUNK_SIZE
+      ) {
+        const chunk = selectedAlbums.slice(start, start + SAVE_CHUNK_SIZE);
+        const chunkNumber = Math.floor(start / SAVE_CHUNK_SIZE) + 1;
+        const totalChunks = Math.ceil(
+          selectedAlbums.length / SAVE_CHUNK_SIZE
         );
+
+        setSaveProgress(
+          `Guardando tanda ${chunkNumber} de ${totalChunks} · ${Math.min(
+            start + chunk.length,
+            selectedAlbums.length
+          ).toLocaleString("es-ES")} / ${selectedAlbums.length.toLocaleString("es-ES")}`
+        );
+
+        const response = await fetch("/api/admin/import", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            mode: "catalog-save",
+            albums: chunk.map((album) => ({
+              albumId: album.albumId,
+              sourceUrl: album.sourceUrl,
+              title: album.title,
+              coverImage: album.coverImage,
+            })),
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ??
+              `No se pudo guardar la tanda ${chunkNumber} de ${totalChunks}.`
+          );
+        }
+
+        imported += Number(data.imported ?? 0);
+        skipped += Number(data.skipped ?? 0);
+        blockedNba += Number(data.blockedNba ?? 0);
+
+        if (Array.isArray(data.names)) {
+          names.push(...data.names);
+        }
       }
 
-      setSaveResult(data);
+      setSaveResult({
+        imported,
+        skipped,
+        blockedNba,
+        names,
+      });
       setSelected([]);
+      setSaveProgress(
+        `Importación terminada · ${imported.toLocaleString("es-ES")} productos creados`
+      );
     } catch (error) {
       setMessage(
         error instanceof Error
           ? error.message
-          : "No se pudieron guardar los borradores."
+          : "No se pudieron guardar todos los borradores."
       );
     } finally {
       setSaving(false);
@@ -213,12 +351,13 @@ export function YupooCatalogImporter() {
         </span>
 
         <h2 style={{ marginBottom: 8 }}>
-          Leer una página de Yupoo
+          Importar todo el catálogo de Yupoo
         </h2>
 
         <p className="muted" style={{ lineHeight: 1.6 }}>
-          El sistema mostrará primero las camisetas detectadas. Todavía no se
-          guardará ni publicará ningún producto.
+          Un solo análisis recorrerá automáticamente todas las páginas, hasta
+          10.000 productos. Solo se apartarán NBA y baloncesto. Después podrás
+          guardarlos todos como borradores con un solo clic.
         </p>
 
         <div style={{ display: "grid", gap: 14, marginTop: 18 }}>
@@ -237,48 +376,18 @@ export function YupooCatalogImporter() {
           </div>
 
           <div
+            className="card"
             style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit,minmax(180px,1fr))",
-              gap: 14,
+              padding: 14,
+              background: "rgba(139,44,255,.06)",
+              borderColor: "rgba(195,92,255,.16)",
             }}
           >
-            <div>
-              <label htmlFor="catalog-page" style={labelStyle}>
-                Página
-              </label>
-
-              <input
-                id="catalog-page"
-                type="number"
-                min={1}
-                max={500}
-                value={page}
-                onChange={(event) =>
-                  setPage(Math.max(1, Number(event.target.value) || 1))
-                }
-                style={inputStyle}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="catalog-limit" style={labelStyle}>
-                Máximo de camisetas
-              </label>
-
-              <select
-                id="catalog-limit"
-                value={limit}
-                onChange={(event) => setLimit(Number(event.target.value))}
-                style={inputStyle}
-              >
-                <option value={10}>10 productos</option>
-                <option value={25}>25 productos</option>
-                <option value={40}>40 productos</option>
-                <option value={50}>50 productos</option>
-              </select>
-            </div>
+            <strong>IMPORTACIÓN COMPLETA</strong>
+            <p className="muted" style={{ margin: "5px 0 0", lineHeight: 1.5 }}>
+              Hasta 10.000 productos · todas las páginas automáticamente ·
+              guardado seguro por tandas internas.
+            </p>
           </div>
 
           <button
@@ -287,10 +396,36 @@ export function YupooCatalogImporter() {
             disabled={loading || !url.trim()}
             className="btn-primary"
           >
-            {loading ? "LEYENDO CATÁLOGO..." : "ANALIZAR PÁGINA"}
+            {loading ? "LEYENDO TODO EL CATÁLOGO..." : "ANALIZAR TODO EL CATÁLOGO"}
           </button>
         </div>
       </section>
+
+      {(loading || scanProgress) && (
+        <div
+          className="card"
+          style={{
+            padding: 16,
+            border: "1px solid rgba(195,92,255,.24)",
+            color: "#e6ccff",
+          }}
+        >
+          {scanProgress || "Leyendo catálogo..."}
+        </div>
+      )}
+
+      {(saving || saveProgress) && (
+        <div
+          className="card"
+          style={{
+            padding: 16,
+            border: "1px solid rgba(61,222,138,.24)",
+            color: "#8af3b7",
+          }}
+        >
+          {saveProgress || "Guardando productos..."}
+        </div>
+      )}
 
       {message && (
         <div
@@ -529,9 +664,10 @@ export function YupooCatalogImporter() {
             </strong>
 
             <p className="muted" style={{ lineHeight: 1.6 }}>
-              Se guardarán como borradores, con 1.000 unidades en S, M, L, XL,
-              2XL, 3XL y 4XL. No aparecerán en el catálogo hasta que las revises
-              y las publiques desde Productos.
+              Se guardarán como borradores. Puedes seleccionar hasta 10.000
+              productos y pulsar una sola vez: el sistema los procesará en
+              tandas internas para evitar errores o tiempos de espera excesivos.
+              No aparecerán en el catálogo hasta que los publiques desde Productos.
             </p>
 
             <button
@@ -543,7 +679,7 @@ export function YupooCatalogImporter() {
             >
               {saving
                 ? "GUARDANDO BORRADORES..."
-                : `GUARDAR ${selectedAlbums.length} SELECCIONADOS COMO BORRADORES`}
+                : `IMPORTAR ${selectedAlbums.length.toLocaleString("es-ES")} PRODUCTOS DE UNA VEZ`}
             </button>
           </section>
 
