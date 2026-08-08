@@ -349,7 +349,7 @@ export async function POST(request: Request) {
     }> = [];
 
     for (const album of scraped) {
-      const productId = productByUrl.get(album.sourceUrl);
+     const productId = productByAlbum.get(album.albumId);
 
       if (!productId) {
         withoutProduct += 1;
