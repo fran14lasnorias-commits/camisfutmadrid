@@ -317,23 +317,25 @@ export async function POST(request: Request) {
       }
     );
 
-  const { data: products, error: productsError } = await supabase
+const { data: products, error: productsError } = await supabase
   .from("products")
   .select("id,supplier_url");
 
-    if (productsError) throw new Error(productsError.message);
+if (productsError) {
+  throw new Error(productsError.message);
+}
 
-    const productByUrl = new Map(
-      (products ?? [])
-        .filter(
-          (row: { id: string; supplier_url: string | null }) =>
-            Boolean(row.supplier_url)
-        )
-        .map((row: { id: string; supplier_url: string | null }) => [
-          row.supplier_url!,
-          row.id,
-        ])
-    );
+const productByAlbum = new Map<string, string>();
+
+for (const product of products ?? []) {
+  if (!product.supplier_url) continue;
+
+  const match = product.supplier_url.match(/\/albums\/(\d+)/i);
+
+  if (!match) continue;
+
+  productByAlbum.set(match[1], product.id);
+}
 
     let updated = 0;
     let imagesSaved = 0;
