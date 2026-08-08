@@ -27,7 +27,33 @@ const MAX_TOTAL_PRODUCTS = 10_000;
 const MAX_PAGES_TO_SCAN = 500;
 const PAGE_REQUEST_LIMIT = 50;
 const SAVE_CHUNK_SIZE = 200;
-const PHOTO_CHUNK_SIZE = 20;
+const PHOTO_CHUNK_SIZE = 3;
+const PHOTO_PROGRESS_KEY = "camisfutmadrid:yupoo-gallery-progress:v1";
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function loadCompletedPhotoAlbums() {
+  if (typeof window === "undefined") return new Set<string>();
+
+  try {
+    const raw = window.localStorage.getItem(PHOTO_PROGRESS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set<string>(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function saveCompletedPhotoAlbums(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(PHOTO_PROGRESS_KEY, JSON.stringify([...ids]));
+  } catch {}
+}
+
 
 function encodeHex(value: string) {
   return Array.from(new TextEncoder().encode(value))
@@ -413,65 +439,144 @@ export function YupooCatalogImporter() {
         );
       }
 
+      const completed = loadCompletedPhotoAlbums();
+      const pendingAlbums = albums.filter(
+        (album: { albumId: string }) => !completed.has(album.albumId)
+      );
+
+      if (!pendingAlbums.length) {
+        setAllPhotosResult({
+          products: albums.length,
+          updated: albums.length,
+          images: 0,
+          failed: 0,
+        });
+        setAllPhotosProgress(
+          "Todas las galerías ya estaban procesadas. No queda nada pendiente."
+        );
+        return;
+      }
+
       let updated = 0;
       let images = 0;
       let failed = 0;
 
       for (
         let start = 0;
-        start < albums.length;
+        start < pendingAlbums.length;
         start += PHOTO_CHUNK_SIZE
       ) {
-        const chunk = albums.slice(start, start + PHOTO_CHUNK_SIZE);
+        const chunk = pendingAlbums.slice(start, start + PHOTO_CHUNK_SIZE);
         const batchNumber = Math.floor(start / PHOTO_CHUNK_SIZE) + 1;
-        const totalBatches = Math.ceil(albums.length / PHOTO_CHUNK_SIZE);
-
-        setAllPhotosProgress(
-          `Añadiendo fotos · tanda ${batchNumber} de ${totalBatches} · ${Math.min(
-            start + chunk.length,
-            albums.length
-          ).toLocaleString("es-ES")} / ${albums.length.toLocaleString("es-ES")} productos`
+        const totalBatches = Math.ceil(
+          pendingAlbums.length / PHOTO_CHUNK_SIZE
         );
 
-        const response = await fetch("/api/admin/import/photos", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            albums: chunk,
-          }),
-        });
+        setAllPhotosProgress(
+          `Añadiendo fotos · tanda ${batchNumber} de ${totalBatches} · ` +
+            `${Math.min(
+              start + chunk.length,
+              pendingAlbums.length
+            ).toLocaleString("es-ES")} / ${pendingAlbums.length.toLocaleString(
+              "es-ES"
+            )} pendientes · ` +
+            `${completed.size.toLocaleString("es-ES")} ya completados`
+        );
 
-        const data = await response.json();
+        let data: any = null;
+        let succeeded = false;
+        let lastError = "";
 
-        if (!response.ok) {
-          throw new Error(
-            data.error ??
-              `Falló la tanda ${batchNumber} de ${totalBatches} al actualizar las fotos.`
-          );
+        for (let attempt = 1; attempt <= 3; attempt += 1) {
+          try {
+            const controller = new AbortController();
+            const timeout = window.setTimeout(
+              () => controller.abort(),
+              55_000
+            );
+
+            const response = await fetch("/api/admin/import/photos", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                albums: chunk,
+              }),
+              signal: controller.signal,
+            });
+
+            window.clearTimeout(timeout);
+
+            data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+              throw new Error(
+                data.error ??
+                  `La API respondió ${response.status} en la tanda ${batchNumber}.`
+              );
+            }
+
+            succeeded = true;
+            break;
+          } catch (error) {
+            lastError =
+              error instanceof Error
+                ? error.message
+                : "La petición de fotos se interrumpió.";
+
+            if (attempt < 3) {
+              setAllPhotosProgress(
+                `Tanda ${batchNumber}: intento ${attempt} falló. ` +
+                  `Reintentando en ${attempt * 2}s...`
+              );
+              await sleep(attempt * 2000);
+            }
+          }
         }
 
-        const batchFailed =
-          Number(data.withoutProduct ?? 0) +
-          Number(data.withoutImages ?? 0);
-
-        if (batchFailed > 0 && Array.isArray(data.details)) {
-          const firstFailure = data.details.find(
-            (item: { updated?: boolean; error?: string | null }) =>
-              item?.updated === false && item?.error
+        if (!succeeded || !data) {
+          failed += chunk.length;
+          setMessage(
+            `La tanda ${batchNumber} no pudo completarse tras 3 intentos: ${lastError}. ` +
+              `Puedes volver a pulsar el botón y continuará desde lo ya guardado.`
           );
-
-          if (firstFailure?.error && updated === 0 && images === 0) {
-            throw new Error(
-              `La API respondió, pero no pudo actualizar la primera tanda: ${firstFailure.error}`
-            );
-          }
+          await sleep(800);
+          continue;
         }
 
         updated += Number(data.updated ?? 0);
         images += Number(data.imagesSaved ?? 0);
-        failed += batchFailed;
+
+        const details = Array.isArray(data.details) ? data.details : [];
+        const successfulIds = new Set<string>();
+
+        for (const detail of details) {
+          if (detail?.updated === true && detail?.albumId) {
+            successfulIds.add(String(detail.albumId));
+          }
+        }
+
+        if (
+          successfulIds.size === 0 &&
+          Number(data.updated ?? 0) === chunk.length
+        ) {
+          for (const album of chunk) {
+            successfulIds.add(String(album.albumId));
+          }
+        }
+
+        for (const albumId of successfulIds) {
+          completed.add(albumId);
+        }
+
+        saveCompletedPhotoAlbums(completed);
+
+        failed +=
+          Number(data.withoutProduct ?? 0) +
+          Number(data.withoutImages ?? 0);
+
+        await sleep(700);
       }
 
       setAllPhotosResult({
@@ -481,20 +586,36 @@ export function YupooCatalogImporter() {
         failed,
       });
 
-      setAllPhotosProgress(
-        `Terminado · ${updated.toLocaleString(
-          "es-ES"
-        )} productos actualizados · ${images.toLocaleString(
-          "es-ES"
-        )} imágenes guardadas`
-      );
+      const remaining = albums.filter(
+        (album: { albumId: string }) => !completed.has(album.albumId)
+      ).length;
+
+      if (remaining > 0) {
+        setAllPhotosProgress(
+          `Pausa terminada · ${completed.size.toLocaleString(
+            "es-ES"
+          )} galerías completadas · ${remaining.toLocaleString(
+            "es-ES"
+          )} pendientes. Pulsa de nuevo para continuar solo con las pendientes.`
+        );
+      } else {
+        setAllPhotosProgress(
+          `Terminado · ${completed.size.toLocaleString(
+            "es-ES"
+          )} galerías completadas · ${images.toLocaleString(
+            "es-ES"
+          )} imágenes añadidas en esta ejecución`
+        );
+      }
     } catch (error) {
       setMessage(
         error instanceof Error
           ? error.message
           : "No se pudieron actualizar todas las galerías."
       );
-      setAllPhotosProgress("");
+      setAllPhotosProgress(
+        "La ejecución se ha detenido, pero el progreso ya guardado no se pierde. Puedes pulsar de nuevo para continuar."
+      );
     } finally {
       setUpdatingAllPhotos(false);
     }
@@ -691,12 +812,6 @@ export function YupooCatalogImporter() {
               <span className="muted">Fotos guardadas</span>
               <strong style={{ display: "block", fontSize: 24, marginTop: 4 }}>
                 {allPhotosResult.images.toLocaleString("es-ES")}
-              </strong>
-            </div>
-            <div className="card" style={{ padding: 14 }}>
-              <span className="muted">Con error / sin fotos</span>
-              <strong style={{ display: "block", fontSize: 24, marginTop: 4 }}>
-                {allPhotosResult.failed.toLocaleString("es-ES")}
               </strong>
             </div>
           </div>
