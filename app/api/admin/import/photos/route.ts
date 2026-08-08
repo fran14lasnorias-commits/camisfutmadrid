@@ -69,97 +69,110 @@ async function scrapeAlbumImages(
   const page = await browser.newPage();
 
   try {
-    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    await page.setViewport({
+      width: 1280,
+      height: 900,
+      deviceScaleFactor: 1,
+    });
 
     await page.setExtraHTTPHeaders({
       "Accept-Language": "es-ES,es;q=0.9,en;q=0.7",
       Referer: sourceUrl,
     });
 
-    await page.setRequestInterception(true);
+    const networkImages: string[] = [];
+
     page.on("request", (request) => {
-      const type = request.resourceType();
+      const url = request.url();
 
-      // No necesitamos vídeo, fuentes ni analítica para descubrir las fotos.
       if (
-        type === "media" ||
-        type === "font" ||
-        /google-analytics|googletagmanager|doubleclick/i.test(request.url())
+        url.includes("photo.yupoo.com") &&
+        /\.(?:jpg|jpeg|png|webp)(?:\?|$)/i.test(url)
       ) {
-        void request.abort();
-        return;
+        networkImages.push(url);
       }
-
-      void request.continue();
     });
 
     await page.goto(sourceUrl, {
-      waitUntil: "domcontentloaded",
-      timeout: 20_000,
+      waitUntil: "networkidle2",
+      timeout: 30_000,
     });
 
-    // Yupoo carga imágenes al hacer scroll. Bajamos por la página para forzar
-    // el lazy-loading antes de leer el DOM.
     await page.evaluate(async () => {
       await new Promise<void>((resolve) => {
-        let total = 0;
-        const step = 700;
+        let previousHeight = 0;
+        let stableRounds = 0;
 
         const timer = window.setInterval(() => {
-          window.scrollBy(0, step);
-          total += step;
+          window.scrollBy(0, 700);
+
+          const currentHeight = document.documentElement.scrollHeight;
+
+          if (currentHeight === previousHeight) {
+            stableRounds += 1;
+          } else {
+            stableRounds = 0;
+            previousHeight = currentHeight;
+          }
 
           const reachedBottom =
-            window.innerHeight + window.scrollY >=
-            document.documentElement.scrollHeight - 80;
+            window.innerHeight + window.scrollY >= currentHeight - 100;
 
-          if (reachedBottom || total > 30_000) {
+          if (reachedBottom && stableRounds >= 3) {
             window.clearInterval(timer);
             resolve();
           }
-        }, 180);
+        }, 250);
+
+        window.setTimeout(() => {
+          window.clearInterval(timer);
+          resolve();
+        }, 10_000);
       });
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await new Promise((resolve) => setTimeout(resolve, 1200));
 
-    const rawImages = await page.evaluate(() => {
-      const selectors = [
-        ".showalbum__children img",
-        ".image__main img",
-        "img[data-origin-src]",
-        "img[data-src]",
-      ];
-
-      const nodes = Array.from(
-        document.querySelectorAll<HTMLImageElement>(selectors.join(","))
-      );
-
+    const domImages = await page.evaluate(() => {
       const urls: string[] = [];
 
-      for (const img of nodes) {
+      for (const img of Array.from(document.images)) {
         const candidates = [
           img.getAttribute("data-origin-src"),
           img.getAttribute("data-original"),
           img.getAttribute("data-src"),
+          img.getAttribute("data-lazy"),
           img.currentSrc,
           img.src,
         ];
 
         for (const candidate of candidates) {
           if (!candidate) continue;
-          urls.push(candidate);
-          break;
+
+          if (candidate.includes("photo.yupoo.com")) {
+            urls.push(candidate);
+            break;
+          }
         }
       }
 
       return urls;
     });
 
+    const html = await page.content();
+    const htmlImages =
+      html
+        .replace(/\\\//g, "/")
+        .match(
+          /(?:https?:)?\/\/photo\.yupoo\.com\/[^"'<>\\\s]+?\.(?:jpg|jpeg|png|webp)(?:\?[^"'<>\\\s]*)?/gi
+        ) ?? [];
+
+    const candidates = [...networkImages, ...domImages, ...htmlImages];
+
     const unique: string[] = [];
     const seen = new Set<string>();
 
-    for (const raw of rawImages) {
+    for (const raw of candidates) {
       const normalized = normalizeImageUrl(raw);
       if (!normalized) continue;
       if (/logo|avatar|qrcode|qr-code|weibo/i.test(normalized)) continue;
@@ -304,24 +317,24 @@ export async function POST(request: Request) {
       }
     );
 
-    const supplierUrls = scraped.map((album) => album.sourceUrl);
-
     const { data: products, error: productsError } = await supabase
-  .from("products")
-  .select("id,supplier_url");
+      .from("products")
+      .select("id,supplier_url")
+      .in("supplier_url", supplierUrls);
 
     if (productsError) throw new Error(productsError.message);
 
-    const productByAlbum = new Map();
-
-for (const p of products ?? []) {
-  if (!p.supplier_url) continue;
-
-  const match = p.supplier_url.match(/\/albums\/(\d+)/i);
-  if (!match) continue;
-
-  productByAlbum.set(match[1], p.id);
-}
+    const productByUrl = new Map(
+      (products ?? [])
+        .filter(
+          (row: { id: string; supplier_url: string | null }) =>
+            Boolean(row.supplier_url)
+        )
+        .map((row: { id: string; supplier_url: string | null }) => [
+          row.supplier_url!,
+          row.id,
+        ])
+    );
 
     let updated = 0;
     let imagesSaved = 0;
@@ -337,7 +350,7 @@ for (const p of products ?? []) {
     }> = [];
 
     for (const album of scraped) {
-      const productId = productByAlbum.get(album.albumId);
+      const productId = productByUrl.get(album.sourceUrl);
 
       if (!productId) {
         withoutProduct += 1;
