@@ -293,7 +293,9 @@ export async function POST(request: Request) {
     browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: null,
-      executablePath: await chromium.executablePath(),
+      executablePath: await chromium.executablePath(
+  "https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.x64.tar"
+),
       headless: true,
     });
 
