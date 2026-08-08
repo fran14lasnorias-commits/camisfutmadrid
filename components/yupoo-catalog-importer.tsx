@@ -27,6 +27,7 @@ const MAX_TOTAL_PRODUCTS = 10_000;
 const MAX_PAGES_TO_SCAN = 500;
 const PAGE_REQUEST_LIMIT = 50;
 const SAVE_CHUNK_SIZE = 200;
+const PHOTO_CHUNK_SIZE = 20;
 
 function encodeHex(value: string) {
   return Array.from(new TextEncoder().encode(value))
@@ -92,6 +93,7 @@ export function YupooCatalogImporter() {
     skipped: number;
     blockedNba?: number;
     imagesUpdated?: number;
+    galleryImages?: number;
     names: string[];
   } | null>(null);
 
@@ -250,6 +252,7 @@ export function YupooCatalogImporter() {
       let skipped = 0;
       let blockedNba = 0;
       let imagesUpdated = 0;
+      let galleryImages = 0;
       const names: string[] = [];
 
       // Un solo clic para el usuario; por dentro se guarda en tandas pequeñas
@@ -300,10 +303,51 @@ export function YupooCatalogImporter() {
         imported += Number(data.imported ?? 0);
         skipped += Number(data.skipped ?? 0);
         blockedNba += Number(data.blockedNba ?? 0);
-        imagesUpdated += Number(data.imagesUpdated ?? 0);
 
         if (Array.isArray(data.names)) {
           names.push(...data.names);
+        }
+
+        // Segunda fase: abre los álbumes con Chromium real para que Yupoo
+        // cargue las fotos lazy y guarda hasta 10 imágenes por producto.
+        for (
+          let photoStart = 0;
+          photoStart < chunk.length;
+          photoStart += PHOTO_CHUNK_SIZE
+        ) {
+          const photoChunk = chunk.slice(
+            photoStart,
+            photoStart + PHOTO_CHUNK_SIZE
+          );
+
+          setSaveProgress(
+            `Fotos de detalle · tanda ${Math.floor(photoStart / PHOTO_CHUNK_SIZE) + 1} de ${Math.ceil(chunk.length / PHOTO_CHUNK_SIZE)} · ${Math.min(start + photoStart + photoChunk.length, selectedAlbums.length).toLocaleString("es-ES")} / ${selectedAlbums.length.toLocaleString("es-ES")}`
+          );
+
+          const photoResponse = await fetch("/api/admin/import/photos", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              albums: photoChunk.map((album) => ({
+                albumId: album.albumId,
+                sourceUrl: album.sourceUrl,
+              })),
+            }),
+          });
+
+          const photoData = await photoResponse.json();
+
+          if (!photoResponse.ok) {
+            throw new Error(
+              photoData.error ??
+                "No se pudieron guardar las fotos de detalle."
+            );
+          }
+
+          imagesUpdated += Number(photoData.updated ?? 0);
+          galleryImages += Number(photoData.imagesSaved ?? 0);
         }
       }
 
@@ -312,6 +356,7 @@ export function YupooCatalogImporter() {
         skipped,
         blockedNba,
         imagesUpdated,
+        galleryImages,
         names,
       });
       setSelected([]);
@@ -714,7 +759,10 @@ export function YupooCatalogImporter() {
                     {" "}
                     Se ha actualizado la galería de{" "}
                     <strong>{saveResult.imagesUpdated}</strong> productos con
-                    varias fotos del álbum.
+                    varias fotos del álbum
+                    {typeof saveResult.galleryImages === "number" && (
+                      <> ({saveResult.galleryImages} imágenes guardadas)</>
+                    )}.
                   </>
                 )}
               </p>
