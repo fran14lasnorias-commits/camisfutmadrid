@@ -165,7 +165,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
   const [name, setName] = useState("");
   const [number, setNumber] = useState("");
   const [patch, setPatch] = useState("");
-  const [view, setView] = useState<"front" | "back">("front");
+  const [imageIndex, setImageIndex] = useState(0);
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
   const touchStartX = useRef<number | null>(null);
@@ -174,16 +174,23 @@ export function ProductConfigurator({ product }: { product: Product }) {
   const { addItem } = useCart();
   const router = useRouter();
 
-  const frontImage = product.images[0] || "/placeholder-shirt.svg";
+  const galleryImages = useMemo(() => {
+    const unique = Array.from(
+      new Set(product.images.filter((image) => Boolean(image && image.trim())))
+    );
+
+    return unique.length ? unique : ["/placeholder-shirt.svg"];
+  }, [product.images]);
+
+  const frontImage = galleryImages[0];
   const backImage =
-    product.images[1] && product.images[1] !== frontImage
-      ? product.images[1]
+    galleryImages[1] && galleryImages[1] !== frontImage
+      ? galleryImages[1]
       : null;
   const hasBackImage = Boolean(backImage);
-  const activeImage =
-    view === "back" && backImage
-      ? backImage
-      : frontImage;
+  const activeImage = galleryImages[imageIndex] ?? frontImage;
+  const hasMultipleImages = galleryImages.length > 1;
+  const isBackView = Boolean(backImage && imageIndex === 1);
 
   const sizeExtra = size === "4XL" ? 2 : 0;
   const personalizationExtra = personalized ? PERSONALIZATION_PRICE_EUR : 0;
@@ -204,7 +211,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
     setError("");
 
     if (enabled && hasBackImage) {
-      setView("back");
+      setImageIndex(1);
     }
   }
 
@@ -212,18 +219,22 @@ export function ProductConfigurator({ product }: { product: Product }) {
     setPatch(value);
 
     if (value && hasBackImage) {
-      setView("back");
+      setImageIndex(1);
     }
   }
 
   function showPreviousImage() {
-    if (!hasBackImage) return;
-    setView(view === "front" ? "back" : "front");
+    if (!hasMultipleImages) return;
+    setImageIndex((current) =>
+      current <= 0 ? galleryImages.length - 1 : current - 1
+    );
   }
 
   function showNextImage() {
-    if (!hasBackImage) return;
-    setView(view === "front" ? "back" : "front");
+    if (!hasMultipleImages) return;
+    setImageIndex((current) =>
+      current >= galleryImages.length - 1 ? 0 : current + 1
+    );
   }
 
   function handleTouchStart(event: React.TouchEvent<HTMLDivElement>) {
@@ -233,7 +244,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
   }
 
   function handleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
-    if (!hasBackImage || touchStartX.current === null || touchStartY.current === null) {
+    if (!hasMultipleImages || touchStartX.current === null || touchStartY.current === null) {
       touchStartX.current = null;
       touchStartY.current = null;
       return;
@@ -268,7 +279,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
       setError("Completa el nombre y el dorsal para guardar la personalización.");
 
       if (hasBackImage) {
-        setView("back");
+        setImageIndex(1);
       }
 
       return;
@@ -309,21 +320,35 @@ export function ProductConfigurator({ product }: { product: Product }) {
           <div className={styles.viewSwitch} role="group" aria-label="Cambiar vista">
             <button
               type="button"
-              className={`${styles.viewButton} ${view === "front" ? styles.viewButtonActive : ""}`}
-              onClick={() => setView("front")}
-              aria-pressed={view === "front"}
+              className={`${styles.viewButton} ${imageIndex === 0 ? styles.viewButtonActive : ""}`}
+              onClick={() => setImageIndex(0)}
+              aria-pressed={imageIndex === 0}
             >
               Frontal
             </button>
             {hasBackImage && (
               <button
                 type="button"
-                className={`${styles.viewButton} ${view === "back" ? styles.viewButtonActive : ""}`}
-                onClick={() => setView("back")}
-                aria-pressed={view === "back"}
+                className={`${styles.viewButton} ${imageIndex === 1 ? styles.viewButtonActive : ""}`}
+                onClick={() => setImageIndex(1)}
+                aria-pressed={imageIndex === 1}
               >
                 Trasera
               </button>
+            )}
+            {galleryImages.length > 2 && (
+              <span
+                style={{
+                  alignSelf: "center",
+                  padding: "0 4px",
+                  color: "#aaa4b5",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {imageIndex + 1}/{galleryImages.length}
+              </span>
             )}
           </div>
         </div>
@@ -336,11 +361,11 @@ export function ProductConfigurator({ product }: { product: Product }) {
           >
           <img
             src={activeImage}
-            alt={`${product.name}, vista ${view === "back" ? "trasera" : "frontal"}`}
+            alt={`${product.name}, imagen ${imageIndex + 1} de ${galleryImages.length}`}
             className={styles.productImage}
           />
 
-          {hasBackImage && (
+          {hasMultipleImages && (
             <>
               <button
                 type="button"
@@ -361,14 +386,14 @@ export function ProductConfigurator({ product }: { product: Product }) {
             </>
           )}
 
-          {view === "back" && personalized && (
+          {isBackView && personalized && (
             <div className={`${styles.personalizationLayer} ${letteringProfile.className}`} aria-hidden="true">
               <span className={styles.playerName}>{previewName}</span>
               <strong className={styles.playerNumber}>{previewNumber}</strong>
             </div>
           )}
 
-          {view === "back" && patch && (
+          {isBackView && patch && (
             <span className={styles.patchPreview} aria-hidden="true">
               {patch}
             </span>
@@ -378,37 +403,54 @@ export function ProductConfigurator({ product }: { product: Product }) {
         <div className={styles.previewFooter}>
           <div style={{ display: "grid", gap: 7 }}>
             <span>Vista orientativa con {letteringProfile.label}.</span>
-            {hasBackImage && (
+            {hasMultipleImages && (
               <span style={{ color: "#aaa4b5", fontSize: 12 }}>
-                En móvil puedes deslizar la camiseta a izquierda o derecha.
+                Desliza para ver frontal, trasera y todos los detalles del producto.
               </span>
             )}
-            {hasBackImage && (
+            {hasMultipleImages && galleryImages.length <= 8 && (
               <div style={{ display: "flex", gap: 6 }} aria-label="Posición de la galería">
-                <span style={view === "front" ? galleryDotActive : galleryDot} />
-                <span style={view === "back" ? galleryDotActive : galleryDot} />
+                {galleryImages.map((_, index) => (
+                  <span
+                    key={index}
+                    style={imageIndex === index ? galleryDotActive : galleryDot}
+                  />
+                ))}
               </div>
             )}
           </div>
-          <div className={styles.thumbnailRow}>
-            <button
-              type="button"
-              className={`${styles.thumbnail} ${view === "front" ? styles.thumbnailActive : ""}`}
-              onClick={() => setView("front")}
-              aria-label="Ver parte frontal"
-            >
-              <img src={frontImage} alt="" />
-            </button>
-            {backImage && (
+          <div
+            className={styles.thumbnailRow}
+            style={{
+              maxWidth: "100%",
+              overflowX: "auto",
+              scrollbarWidth: "thin",
+              paddingBottom: 4,
+            }}
+          >
+            {galleryImages.map((image, index) => (
               <button
+                key={`${image}-${index}`}
                 type="button"
-                className={`${styles.thumbnail} ${view === "back" ? styles.thumbnailActive : ""}`}
-                onClick={() => setView("back")}
-                aria-label="Ver parte trasera"
+                className={`${styles.thumbnail} ${imageIndex === index ? styles.thumbnailActive : ""}`}
+                onClick={() => setImageIndex(index)}
+                aria-label={
+                  index === 0
+                    ? "Ver parte frontal"
+                    : index === 1 && hasBackImage
+                      ? "Ver parte trasera"
+                      : `Ver detalle ${index + 1}`
+                }
+                style={{ flex: "0 0 auto" }}
               >
-                <img src={backImage} alt="" />
+                <img
+                  src={image}
+                  alt=""
+                  loading={index < 3 ? "eager" : "lazy"}
+                  decoding="async"
+                />
               </button>
-            )}
+            ))}
           </div>
         </div>
       </section>
@@ -498,7 +540,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
                       setError("");
 
                       if (hasBackImage) {
-                        setView("back");
+                        setImageIndex(1);
                       }
                     }}
                     maxLength={12}
@@ -517,7 +559,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
                       setError("");
 
                       if (hasBackImage) {
-                        setView("back");
+                        setImageIndex(1);
                       }
                     }}
                     maxLength={2}
