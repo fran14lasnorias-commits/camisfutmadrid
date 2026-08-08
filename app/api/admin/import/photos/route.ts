@@ -307,23 +307,21 @@ export async function POST(request: Request) {
     const supplierUrls = scraped.map((album) => album.sourceUrl);
 
     const { data: products, error: productsError } = await supabase
-      .from("products")
-      .select("id,supplier_url")
-      .in("supplier_url", supplierUrls);
+  .from("products")
+  .select("id,supplier_url");
 
     if (productsError) throw new Error(productsError.message);
 
-    const productByUrl = new Map(
-      (products ?? [])
-        .filter(
-          (row: { id: string; supplier_url: string | null }) =>
-            Boolean(row.supplier_url)
-        )
-        .map((row: { id: string; supplier_url: string | null }) => [
-          row.supplier_url!,
-          row.id,
-        ])
-    );
+    const productByAlbum = new Map();
+
+for (const p of products ?? []) {
+  if (!p.supplier_url) continue;
+
+  const match = p.supplier_url.match(/\/albums\/(\d+)/i);
+  if (!match) continue;
+
+  productByAlbum.set(match[1], p.id);
+}
 
     let updated = 0;
     let imagesSaved = 0;
@@ -339,7 +337,7 @@ export async function POST(request: Request) {
     }> = [];
 
     for (const album of scraped) {
-      const productId = productByUrl.get(album.sourceUrl);
+      const productId = productByAlbum.get(album.albumId);
 
       if (!productId) {
         withoutProduct += 1;
