@@ -27,6 +27,7 @@ const MAX_TOTAL_PRODUCTS = 10_000;
 const MAX_PAGES_TO_SCAN = 500;
 const PAGE_REQUEST_LIMIT = 50;
 const SAVE_CHUNK_SIZE = 200;
+
 function encodeHex(value: string) {
   return Array.from(new TextEncoder().encode(value))
     .map((byte) => byte.toString(16).padStart(2, "0"))
@@ -90,6 +91,7 @@ export function YupooCatalogImporter() {
     imported: number;
     skipped: number;
     blockedNba?: number;
+    imagesUpdated?: number;
     names: string[];
   } | null>(null);
 
@@ -247,6 +249,7 @@ export function YupooCatalogImporter() {
       let imported = 0;
       let skipped = 0;
       let blockedNba = 0;
+      let imagesUpdated = 0;
       const names: string[] = [];
 
       // Un solo clic para el usuario; por dentro se guarda en tandas pequeñas
@@ -297,6 +300,7 @@ export function YupooCatalogImporter() {
         imported += Number(data.imported ?? 0);
         skipped += Number(data.skipped ?? 0);
         blockedNba += Number(data.blockedNba ?? 0);
+        imagesUpdated += Number(data.imagesUpdated ?? 0);
 
         if (Array.isArray(data.names)) {
           names.push(...data.names);
@@ -307,6 +311,7 @@ export function YupooCatalogImporter() {
         imported,
         skipped,
         blockedNba,
+        imagesUpdated,
         names,
       });
       setSelected([]);
@@ -702,6 +707,14 @@ export function YupooCatalogImporter() {
                     {" "}
                     Se han omitido <strong>{saveResult.skipped}</strong> porque
                     ya estaban importados.
+                  </>
+                )}
+                {(saveResult.imagesUpdated ?? 0) > 0 && (
+                  <>
+                    {" "}
+                    Se ha actualizado la galería de{" "}
+                    <strong>{saveResult.imagesUpdated}</strong> productos con
+                    varias fotos del álbum.
                   </>
                 )}
               </p>
