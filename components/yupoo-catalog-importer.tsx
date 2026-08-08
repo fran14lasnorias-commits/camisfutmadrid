@@ -446,14 +446,32 @@ export function YupooCatalogImporter() {
         const data = await response.json();
 
         if (!response.ok) {
-          failed += chunk.length;
-          continue;
+          throw new Error(
+            data.error ??
+              `Falló la tanda ${batchNumber} de ${totalBatches} al actualizar las fotos.`
+          );
+        }
+
+        const batchFailed =
+          Number(data.withoutProduct ?? 0) +
+          Number(data.withoutImages ?? 0);
+
+        if (batchFailed > 0 && Array.isArray(data.details)) {
+          const firstFailure = data.details.find(
+            (item: { updated?: boolean; error?: string | null }) =>
+              item?.updated === false && item?.error
+          );
+
+          if (firstFailure?.error && updated === 0 && images === 0) {
+            throw new Error(
+              `La API respondió, pero no pudo actualizar la primera tanda: ${firstFailure.error}`
+            );
+          }
         }
 
         updated += Number(data.updated ?? 0);
         images += Number(data.imagesSaved ?? 0);
-        failed += Number(data.withoutProduct ?? 0);
-        failed += Number(data.withoutImages ?? 0);
+        failed += batchFailed;
       }
 
       setAllPhotosResult({
@@ -673,6 +691,12 @@ export function YupooCatalogImporter() {
               <span className="muted">Fotos guardadas</span>
               <strong style={{ display: "block", fontSize: 24, marginTop: 4 }}>
                 {allPhotosResult.images.toLocaleString("es-ES")}
+              </strong>
+            </div>
+            <div className="card" style={{ padding: 14 }}>
+              <span className="muted">Con error / sin fotos</span>
+              <strong style={{ display: "block", fontSize: 24, marginTop: 4 }}>
+                {allPhotosResult.failed.toLocaleString("es-ES")}
               </strong>
             </div>
           </div>
