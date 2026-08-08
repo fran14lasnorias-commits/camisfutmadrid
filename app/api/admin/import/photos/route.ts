@@ -81,143 +81,111 @@ async function scrapeAlbumImages(
       deviceScaleFactor: 1,
     });
 
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-        "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-    );
-
     await page.setExtraHTTPHeaders({
       "Accept-Language": "es-ES,es;q=0.9,en;q=0.7",
       Referer: sourceUrl,
     });
 
-    await page.evaluateOnNewDocument(() => {
-      Object.defineProperty(navigator, "webdriver", {
-        get: () => undefined,
-      });
-    });
-
     const networkImages: string[] = [];
 
     page.on("request", (request) => {
-      const requestUrl = request.url();
-      const resourceType = request.resourceType();
+      const url = request.url();
 
       if (
-        resourceType === "image" &&
-        requestUrl.toLowerCase().includes("yupoo.com")
+        url.includes("photo.yupoo.com") &&
+        /\.(?:jpg|jpeg|png|webp)(?:\?|$)/i.test(url)
       ) {
-        networkImages.push(requestUrl);
+        networkImages.push(url);
       }
     });
 
-    const response = await page.goto(sourceUrl, {
-      waitUntil: "domcontentloaded",
-      timeout: 25_000,
+    await page.goto(sourceUrl, {
+      waitUntil: "networkidle2",
+      timeout: 30_000,
     });
 
-    if (response && response.status() >= 400) {
-      throw new Error(
-        `Yupoo respondió HTTP ${response.status()} al abrir el álbum.`
-      );
-    }
+    await page.evaluate(async () => {
+      await new Promise<void>((resolve) => {
+        let previousHeight = 0;
+        let stableRounds = 0;
 
-    // Yupoo muestra las fotos del álbum dentro de estos selectores.
-    // data-origin-src contiene normalmente la imagen de mayor calidad.
-    const albumSelector = ".showalbum__children img, .image__main img";
+        const timer = window.setInterval(() => {
+          window.scrollBy(0, 700);
 
-    await page
-      .waitForSelector(albumSelector, { timeout: 10_000 })
-      .catch(() => null);
+          const currentHeight = document.documentElement.scrollHeight;
 
-    // Forzamos el lazy-loading recorriendo las imágenes reales del álbum.
-    await page.evaluate(async (selector) => {
-      const sleep = (ms: number) =>
-        new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+          if (currentHeight === previousHeight) {
+            stableRounds += 1;
+          } else {
+            stableRounds = 0;
+            previousHeight = currentHeight;
+          }
 
-      for (let round = 0; round < 5; round += 1) {
-        const images = Array.from(
-          document.querySelectorAll<HTMLImageElement>(selector)
-        );
+          const reachedBottom =
+            window.innerHeight + window.scrollY >= currentHeight - 100;
 
-        for (const image of images) {
-          image.scrollIntoView({
-            block: "center",
-            inline: "nearest",
-          });
-          await sleep(80);
-        }
+          if (reachedBottom && stableRounds >= 3) {
+            window.clearInterval(timer);
+            resolve();
+          }
+        }, 250);
 
-        window.scrollTo(0, document.documentElement.scrollHeight);
-        await sleep(500);
-      }
+        window.setTimeout(() => {
+          window.clearInterval(timer);
+          resolve();
+        }, 10_000);
+      });
+    });
 
-      window.scrollTo(0, 0);
-      await sleep(300);
-    }, albumSelector);
+    await new Promise((resolve) => setTimeout(resolve, 1200));
 
-    const selectorImages = await page.$$eval(albumSelector, (images) => {
+    const domImages = await page.evaluate(() => {
       const urls: string[] = [];
 
-      for (const image of images as HTMLImageElement[]) {
+      for (const img of Array.from(document.images)) {
         const candidates = [
-          image.getAttribute("data-origin-src"),
-          image.getAttribute("data-original"),
-          image.getAttribute("data-src"),
-          image.currentSrc,
-          image.src,
+          img.getAttribute("data-origin-src"),
+          img.getAttribute("data-original"),
+          img.getAttribute("data-src"),
+          img.getAttribute("data-lazy"),
+          img.currentSrc,
+          img.src,
         ];
 
         for (const candidate of candidates) {
-          if (candidate) urls.push(candidate);
-        }
+          if (!candidate) continue;
 
-        for (const srcset of [
-          image.getAttribute("data-srcset"),
-          image.getAttribute("srcset"),
-        ]) {
-          if (!srcset) continue;
+         try {
+  const absolute = candidate.startsWith("//")
+    ? `https:${candidate}`
+    : candidate;
 
-          for (const part of srcset.split(",")) {
-            const candidate = part.trim().split(/\s+/)[0];
-            if (candidate) urls.push(candidate);
-          }
+  const candidateUrl = new URL(absolute);
+  const hostname = candidateUrl.hostname.toLowerCase();
+
+  if (
+    (hostname === "yupoo.com" || hostname.endsWith(".yupoo.com")) &&
+    /\.(jpg|jpeg|png|webp)(\?|$)/i.test(candidateUrl.pathname)
+  ) {
+    urls.push(absolute);
+    break;
+  }
+} catch {}
         }
       }
 
       return urls;
     });
 
-    // Respaldo: si Yupoo cambia ligeramente el selector, recogemos cualquier
-    // imagen/recurso de Yupoo que el navegador haya cargado.
-    const fallbackImages = await page.evaluate(() => {
-      const urls: string[] = [];
+    const html = await page.content();
+    const htmlImages =
+      html
+        .replace(/\\\//g, "/")
+        .match(
+          /(?:https?:)?\/\/photo\.yupoo\.com\/[^"'<>\\\s]+?\.(?:jpg|jpeg|png|webp)(?:\?[^"'<>\\\s]*)?/gi
+        ) ?? [];
 
-      for (const image of Array.from(document.images)) {
-        for (const candidate of [
-          image.getAttribute("data-origin-src"),
-          image.getAttribute("data-original"),
-          image.getAttribute("data-src"),
-          image.currentSrc,
-          image.src,
-        ]) {
-          if (candidate) urls.push(candidate);
-        }
-      }
-
-      for (const entry of performance.getEntriesByType("resource")) {
-        const name = (entry as PerformanceResourceTiming).name;
-        if (name) urls.push(name);
-      }
-
-      return urls;
-    });
-
-    const candidates = [
-      ...selectorImages,
-      ...networkImages,
-      ...fallbackImages,
-    ];
+    const candidates = [...networkImages, ...domImages, ...htmlImages];
 
     const unique: string[] = [];
     const seen = new Set<string>();
@@ -225,35 +193,13 @@ async function scrapeAlbumImages(
     for (const raw of candidates) {
       const normalized = normalizeImageUrl(raw);
       if (!normalized) continue;
-
-      if (/logo|avatar|qrcode|qr-code|weibo|favicon/i.test(normalized)) {
-        continue;
-      }
-
+      if (/logo|avatar|qrcode|qr-code|weibo/i.test(normalized)) continue;
       if (seen.has(normalized)) continue;
 
       seen.add(normalized);
       unique.push(normalized);
 
       if (unique.length >= MAX_IMAGES_PER_PRODUCT) break;
-    }
-
-    if (!unique.length) {
-      const diagnostic = await page.evaluate((selector) => {
-        return {
-          title: document.title,
-          url: location.href,
-          albumImages: document.querySelectorAll(selector).length,
-          allImages: document.images.length,
-          text: document.body?.innerText?.slice(0, 300) ?? "",
-        };
-      }, albumSelector);
-
-      throw new Error(
-        `Yupoo abrió el álbum pero no detectó fotos ` +
-          `(selector=${diagnostic.albumImages}, img=${diagnostic.allImages}, ` +
-          `título="${diagnostic.title}", url="${diagnostic.url}").`
-      );
     }
 
     return unique;
@@ -391,25 +337,42 @@ export async function POST(request: Request) {
       }
     );
 
-const { data: products, error: productsError } = await supabase
-  .from("products")
-  .select("id,supplier_url");
+    // Supabase devuelve como máximo 1.000 filas por consulta.
+    // Cargamos todos los productos por páginas para que el mapa incluya
+    // también los álbumes 1001, 1002, etc.
+    const PRODUCT_PAGE_SIZE = 1000;
+    let productFrom = 0;
+    const productByAlbum = new Map<string, string>();
 
-if (productsError) {
-  throw new Error(productsError.message);
-}
+    while (true) {
+      const { data: productRows, error: productsError } = await supabase
+        .from("products")
+        .select("id,supplier_url")
+        .not("supplier_url", "is", null)
+        .range(productFrom, productFrom + PRODUCT_PAGE_SIZE - 1);
 
-const productByAlbum = new Map<string, string>();
+      if (productsError) {
+        throw new Error(productsError.message);
+      }
 
-for (const product of products ?? []) {
-  if (!product.supplier_url) continue;
+      const rows =
+        (productRows ?? []) as Array<{
+          id: string;
+          supplier_url: string | null;
+        }>;
 
-  const match = product.supplier_url.match(/\/albums\/(\d+)/i);
+      for (const product of rows) {
+        if (!product.supplier_url) continue;
 
-  if (!match) continue;
+        const match = product.supplier_url.match(/\/albums\/(\d+)/i);
+        if (!match) continue;
 
-  productByAlbum.set(match[1], product.id);
-}
+        productByAlbum.set(match[1], product.id);
+      }
+
+      if (rows.length < PRODUCT_PAGE_SIZE) break;
+      productFrom += PRODUCT_PAGE_SIZE;
+    }
 
     let updated = 0;
     let imagesSaved = 0;
