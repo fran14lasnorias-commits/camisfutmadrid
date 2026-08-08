@@ -119,7 +119,7 @@ export default async function ProductPage({
   const { slug } = await params;
   const [product, products] = await Promise.all([
     getProduct(slug),
-    getPublishedProducts({ limit: 60 }),
+    getPublishedProducts({ limit: 40 }),
   ]);
 
   if (!product) notFound();
@@ -219,7 +219,7 @@ export default async function ProductPage({
                     letterSpacing: ".14em",
                   }}
                 >
-                  TAMBIÉN TE PUEDEN GUSTAR
+                  ELEGIDAS PARA TI
                 </span>
 
                 <h2
@@ -228,7 +228,7 @@ export default async function ProductPage({
                     fontSize: "clamp(2.8rem,7vw,5.2rem)",
                   }}
                 >
-                  CAMISETAS RELACIONADAS
+                  TAMBIÉN TE PUEDE GUSTAR
                 </h2>
               </div>
 
