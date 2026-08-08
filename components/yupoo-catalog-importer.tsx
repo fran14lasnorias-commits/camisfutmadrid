@@ -87,6 +87,14 @@ export function YupooCatalogImporter() {
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [updatingAllPhotos, setUpdatingAllPhotos] = useState(false);
+  const [allPhotosProgress, setAllPhotosProgress] = useState("");
+  const [allPhotosResult, setAllPhotosResult] = useState<{
+    products: number;
+    updated: number;
+    images: number;
+    failed: number;
+  } | null>(null);
   const [message, setMessage] = useState("");
   const [saveResult, setSaveResult] = useState<{
     imported: number;
@@ -374,6 +382,106 @@ export function YupooCatalogImporter() {
     }
   }
 
+
+  async function updateEveryProductPhotoGallery() {
+    if (updatingAllPhotos || saving || loading) return;
+
+    setUpdatingAllPhotos(true);
+    setAllPhotosProgress("Buscando todos los productos de la tienda...");
+    setAllPhotosResult(null);
+    setMessage("");
+
+    try {
+      const listResponse = await fetch("/api/admin/import/photos", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      const listData = await listResponse.json();
+
+      if (!listResponse.ok) {
+        throw new Error(
+          listData.error ?? "No se pudieron leer los productos existentes."
+        );
+      }
+
+      const albums = Array.isArray(listData.albums) ? listData.albums : [];
+
+      if (!albums.length) {
+        throw new Error(
+          "No se han encontrado productos con un álbum de Yupoo asociado."
+        );
+      }
+
+      let updated = 0;
+      let images = 0;
+      let failed = 0;
+
+      for (
+        let start = 0;
+        start < albums.length;
+        start += PHOTO_CHUNK_SIZE
+      ) {
+        const chunk = albums.slice(start, start + PHOTO_CHUNK_SIZE);
+        const batchNumber = Math.floor(start / PHOTO_CHUNK_SIZE) + 1;
+        const totalBatches = Math.ceil(albums.length / PHOTO_CHUNK_SIZE);
+
+        setAllPhotosProgress(
+          `Añadiendo fotos · tanda ${batchNumber} de ${totalBatches} · ${Math.min(
+            start + chunk.length,
+            albums.length
+          ).toLocaleString("es-ES")} / ${albums.length.toLocaleString("es-ES")} productos`
+        );
+
+        const response = await fetch("/api/admin/import/photos", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            albums: chunk,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          failed += chunk.length;
+          continue;
+        }
+
+        updated += Number(data.updated ?? 0);
+        images += Number(data.imagesSaved ?? 0);
+        failed += Number(data.withoutProduct ?? 0);
+        failed += Number(data.withoutImages ?? 0);
+      }
+
+      setAllPhotosResult({
+        products: albums.length,
+        updated,
+        images,
+        failed,
+      });
+
+      setAllPhotosProgress(
+        `Terminado · ${updated.toLocaleString(
+          "es-ES"
+        )} productos actualizados · ${images.toLocaleString(
+          "es-ES"
+        )} imágenes guardadas`
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "No se pudieron actualizar todas las galerías."
+      );
+      setAllPhotosProgress("");
+    } finally {
+      setUpdatingAllPhotos(false);
+    }
+  }
+
   function toggleAlbum(albumId: string) {
     setSelected((current) =>
       current.includes(albumId)
@@ -489,7 +597,89 @@ export function YupooCatalogImporter() {
         </div>
       )}
 
-      {batch && (
+      
+      <div
+        className="card"
+        style={{
+          marginTop: 18,
+          padding: 18,
+          borderColor: "rgba(195,92,255,.28)",
+          background:
+            "linear-gradient(135deg,rgba(139,44,255,.11),rgba(195,92,255,.05))",
+        }}
+      >
+        <strong style={{ display: "block", marginBottom: 6 }}>
+          GALERÍAS AUTOMÁTICAS
+        </strong>
+        <p className="muted" style={{ margin: "0 0 14px", lineHeight: 1.55 }}>
+          Un solo clic: recorre todos los productos que ya existen y añade a
+          cada camiseta las fotos de su propio álbum de Yupoo.
+        </p>
+
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={updateEveryProductPhotoGallery}
+          disabled={updatingAllPhotos || saving || loading}
+          style={{
+            width: "100%",
+            minHeight: 54,
+            fontSize: 15,
+          }}
+        >
+          {updatingAllPhotos
+            ? "AÑADIENDO FOTOS A TODAS LAS CAMISETAS..."
+            : "AÑADIR TODAS LAS FOTOS A CADA CAMISETA"}
+        </button>
+
+        {allPhotosProgress && (
+          <div
+            style={{
+              marginTop: 12,
+              padding: "12px 14px",
+              borderRadius: 12,
+              border: "1px solid rgba(61,222,138,.28)",
+              color: "#79f2ad",
+              lineHeight: 1.5,
+            }}
+          >
+            {allPhotosProgress}
+          </div>
+        )}
+
+        {allPhotosResult && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit,minmax(min(150px,100%),1fr))",
+              gap: 10,
+              marginTop: 12,
+            }}
+          >
+            <div className="card" style={{ padding: 14 }}>
+              <span className="muted">Productos revisados</span>
+              <strong style={{ display: "block", fontSize: 24, marginTop: 4 }}>
+                {allPhotosResult.products.toLocaleString("es-ES")}
+              </strong>
+            </div>
+            <div className="card" style={{ padding: 14 }}>
+              <span className="muted">Galerías actualizadas</span>
+              <strong style={{ display: "block", fontSize: 24, marginTop: 4 }}>
+                {allPhotosResult.updated.toLocaleString("es-ES")}
+              </strong>
+            </div>
+            <div className="card" style={{ padding: 14 }}>
+              <span className="muted">Fotos guardadas</span>
+              <strong style={{ display: "block", fontSize: 24, marginTop: 4 }}>
+                {allPhotosResult.images.toLocaleString("es-ES")}
+              </strong>
+            </div>
+          </div>
+        )}
+      </div>
+
+{batch && (
         <>
           <section
             style={{
