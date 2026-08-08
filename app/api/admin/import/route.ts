@@ -25,7 +25,19 @@ const CatalogAlbumSchema = z.object({
       }
     }, "El álbum debe pertenecer a Yupoo."),
   title: z.string().trim().min(3).max(240),
-  coverImage: z.string().url().nullable().optional(),
+  coverImage: z
+    .string()
+    .url()
+    .nullable()
+    .refine((value) => {
+      if (!value) return true;
+
+      try {
+        return new URL(value).hostname.toLowerCase() === "photo.yupoo.com";
+      } catch {
+        return false;
+      }
+    }, "La portada debe pertenecer a Yupoo."),
 });
 
 const CatalogSaveSchema = z.object({
@@ -265,6 +277,130 @@ function proxyImageUrl(sourceUrl: string | null, refererUrl: string) {
   return `/api/yupoo-image?u=${source}&r=${referer}`;
 }
 
+
+function normalizeYupooPhotoUrl(value: string) {
+  try {
+    const parsed = new URL(value.startsWith("//") ? `https:${value}` : value);
+
+    if (parsed.hostname.toLowerCase() !== "photo.yupoo.com") {
+      return null;
+    }
+
+    // Evitamos miniaturas diminutas, pero tampoco cargamos el original pesado.
+    parsed.pathname = parsed.pathname.replace(
+      /\/(small|large|original)\.(jpg|jpeg|png|webp)$/i,
+      "/medium.$2"
+    );
+
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function extractYupooPhotos(html: string, coverImage: string | null) {
+  const cleaned = html
+    .replace(/\\\//g, "/")
+    .replace(/&amp;/g, "&")
+    .replace(/&#x2F;/gi, "/")
+    .replace(/&quot;/g, '"');
+
+  const photos: string[] = [];
+  const seen = new Set<string>();
+
+  function add(value: string | null | undefined) {
+    if (!value) return;
+
+    const normalized = normalizeYupooPhotoUrl(value);
+    if (!normalized) return;
+    if (/logo|avatar|qrcode|qr-code|weibo/i.test(normalized)) return;
+    if (seen.has(normalized)) return;
+
+    seen.add(normalized);
+    photos.push(normalized);
+  }
+
+  // La portada va primero para que siga siendo la imagen principal.
+  add(coverImage);
+
+  // URLs incrustadas en HTML / JSON interno.
+  const urlPattern =
+    /(?:https?:)?\/\/photo\.yupoo\.com\/[A-Za-z0-9_%./?=&+\-]+/g;
+
+  for (const match of cleaned.match(urlPattern) ?? []) {
+    add(match);
+  }
+
+  // Atributos habituales de lazy-loading.
+  const attributePattern =
+    /(?:src|data-src|data-origin-src|data-original|data-lazy)=["']([^"']+)["']/gi;
+
+  for (const match of cleaned.matchAll(attributePattern)) {
+    add(match[1]);
+  }
+
+  // 10 imágenes por producto da detalle de sobra sin convertir la ficha
+  // en una descarga gigantesca.
+  return photos.slice(0, 10);
+}
+
+async function readAlbumPhotos(album: CatalogAlbum) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8_000);
+
+  try {
+    const response = await fetch(album.sourceUrl, {
+      cache: "no-store",
+      redirect: "follow",
+      signal: controller.signal,
+      headers: {
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "es-ES,es;q=0.9,en;q=0.7",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/136 Safari/537.36",
+        Referer: "https://y199111.x.yupoo.com/",
+      },
+    });
+
+    if (!response.ok) {
+      return album.coverImage ? [album.coverImage] : [];
+    }
+
+    return extractYupooPhotos(await response.text(), album.coverImage);
+  } catch {
+    return album.coverImage ? [album.coverImage] : [];
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<R>
+) {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  async function runWorker() {
+    while (true) {
+      const index = nextIndex++;
+      if (index >= items.length) return;
+      results[index] = await worker(items[index], index);
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(concurrency, Math.max(items.length, 1)) },
+      () => runWorker()
+    )
+  );
+
+  return results;
+}
+
 async function saveCatalogDrafts(
   supabase: Awaited<ReturnType<typeof createClient>>,
   albums: CatalogAlbum[]
@@ -277,127 +413,194 @@ async function saveCatalogDrafts(
   const supplierUrls = drafts.map(({ album }) => album.sourceUrl);
   const slugs = drafts.map(({ slug }) => slug);
 
-  const [{ data: existingByUrl, error: urlError }, { data: existingBySlug, error: slugError }] =
-    await Promise.all([
-      supabase
-        .from("products")
-        .select("supplier_url")
-        .in("supplier_url", supplierUrls),
-      supabase.from("products").select("slug").in("slug", slugs),
-    ]);
+  const [
+    { data: existingByUrl, error: urlError },
+    { data: existingBySlug, error: slugError },
+  ] = await Promise.all([
+    supabase
+      .from("products")
+      .select("id,slug,supplier_url")
+      .in("supplier_url", supplierUrls),
+    supabase
+      .from("products")
+      .select("id,slug,supplier_url")
+      .in("slug", slugs),
+  ]);
 
   if (urlError) throw new Error(urlError.message);
   if (slugError) throw new Error(slugError.message);
 
-  const existingUrls = new Set(
-    (existingByUrl ?? [])
-      .map((row: { supplier_url: string | null }) => row.supplier_url)
-      .filter(Boolean)
-  );
+  type ExistingProduct = {
+    id: string;
+    slug: string;
+    supplier_url: string | null;
+  };
 
-  const existingSlugs = new Set(
-    (existingBySlug ?? []).map((row: { slug: string }) => row.slug)
-  );
+  const existingRows = [
+    ...((existingByUrl ?? []) as ExistingProduct[]),
+    ...((existingBySlug ?? []) as ExistingProduct[]),
+  ];
+
+  const existingBySupplierUrl = new Map<string, ExistingProduct>();
+  const existingByProductSlug = new Map<string, ExistingProduct>();
+
+  for (const row of existingRows) {
+    if (row.supplier_url) {
+      existingBySupplierUrl.set(row.supplier_url, row);
+    }
+    existingByProductSlug.set(row.slug, row);
+  }
 
   const newDrafts = drafts.filter(
     ({ album, slug }) =>
-      !existingUrls.has(album.sourceUrl) && !existingSlugs.has(slug)
+      !existingBySupplierUrl.has(album.sourceUrl) &&
+      !existingByProductSlug.has(slug)
   );
 
   const skipped = drafts.length - newDrafts.length;
 
-  if (!newDrafts.length) {
-    return {
-      imported: 0,
-      skipped: skipped + blockedNba,
-      blockedNba,
-      names: [] as string[],
-    };
-  }
+  let insertedProducts: Array<{ id: string; slug: string }> = [];
 
-  const { data: insertedProducts, error: productError } = await supabase
-    .from("products")
-    .insert(
-      newDrafts.map((draft) => ({
-        slug: draft.slug,
-        name: draft.name,
-        team: draft.team,
-        season: draft.season || null,
-        type: draft.type,
-        price_eur: draft.priceEur,
-        original_price_eur: draft.priceEur + 5,
-        supplier_cost_usd: draft.supplierCostUsd,
-        description: draft.description,
-        supplier_url: draft.album.sourceUrl,
-        published: false,
-      }))
-    )
-    .select("id,slug");
+  if (newDrafts.length) {
+    const { data, error: productError } = await supabase
+      .from("products")
+      .insert(
+        newDrafts.map((draft) => ({
+          slug: draft.slug,
+          name: draft.name,
+          team: draft.team,
+          season: draft.season || null,
+          type: draft.type,
+          price_eur: draft.priceEur,
+          original_price_eur: draft.priceEur + 5,
+          supplier_cost_usd: draft.supplierCostUsd,
+          description: draft.description,
+          supplier_url: draft.album.sourceUrl,
+          published: false,
+        }))
+      )
+      .select("id,slug");
 
-  if (productError || !insertedProducts) {
-    throw new Error(
-      productError?.message ?? "No se pudieron crear los borradores."
-    );
+    if (productError || !data) {
+      throw new Error(
+        productError?.message ?? "No se pudieron crear los borradores."
+      );
+    }
+
+    insertedProducts = data as Array<{ id: string; slug: string }>;
   }
 
   const draftBySlug = new Map(
-    newDrafts.map((draft) => [draft.slug, draft])
+    drafts.map((draft) => [draft.slug, draft])
   );
 
-  const productIds = insertedProducts.map(
-    (product: { id: string }) => product.id
-  );
+  const productByDraftSlug = new Map<string, { id: string; slug: string }>();
 
-  try {
-    const { error: imageError } = await supabase
-      .from("product_images")
-      .insert(
-        insertedProducts.map(
-          (product: { id: string; slug: string }) => {
-            const draft = draftBySlug.get(product.slug)!;
+  for (const draft of drafts) {
+    const existing =
+      existingBySupplierUrl.get(draft.album.sourceUrl) ??
+      existingByProductSlug.get(draft.slug);
 
-            return {
-              product_id: product.id,
-              url: proxyImageUrl(
-  draft.album.coverImage ?? null,
-  draft.album.sourceUrl
-),
-              position: 0,
-            };
-          }
-        )
-      );
-
-    if (imageError) throw new Error(imageError.message);
-
-    const { error: variantError } = await supabase
-      .from("product_variants")
-      .insert(
-        insertedProducts.flatMap(
-          (product: { id: string; slug: string }) => {
-            const draft = draftBySlug.get(product.slug)!;
-
-            return sizesFor(draft.type).map((size) => ({
-              product_id: product.id,
-              size,
-              stock: 1000,
-            }));
-          }
-        )
-      );
-
-    if (variantError) throw new Error(variantError.message);
-  } catch (error) {
-    await supabase.from("products").delete().in("id", productIds);
-    throw error;
+    if (existing) {
+      productByDraftSlug.set(draft.slug, {
+        id: existing.id,
+        slug: existing.slug,
+      });
+    }
   }
 
-  return {
-    imported: insertedProducts.length,
-    skipped: skipped + blockedNba,
-    blockedNba,
-    names: newDrafts.map((draft) => draft.name),
-  };
+  for (const inserted of insertedProducts) {
+    productByDraftSlug.set(inserted.slug, inserted);
+  }
+
+  const insertedProductIds = insertedProducts.map((product) => product.id);
+
+  try {
+    // Leemos varios álbumes en paralelo para no hacer 200 peticiones en serie.
+    const photosByDraft = await mapWithConcurrency(
+      drafts,
+      8,
+      async (draft) => ({
+        slug: draft.slug,
+        photos: await readAlbumPhotos(draft.album),
+      })
+    );
+
+    let imagesUpdated = 0;
+
+    for (const item of photosByDraft) {
+      const product = productByDraftSlug.get(item.slug);
+      const draft = draftBySlug.get(item.slug);
+
+      if (!product || !draft || !item.photos.length) continue;
+
+      const proxiedPhotos = item.photos.map((photo) =>
+        proxyImageUrl(photo, draft.album.sourceUrl)
+      );
+
+      // Solo reemplazamos si hemos conseguido fotos del álbum.
+      // Así, una incidencia puntual de Yupoo nunca deja el producto sin foto.
+      const { error: deleteImageError } = await supabase
+        .from("product_images")
+        .delete()
+        .eq("product_id", product.id);
+
+      if (deleteImageError) throw new Error(deleteImageError.message);
+
+      const { error: imageError } = await supabase
+        .from("product_images")
+        .insert(
+          proxiedPhotos.map((url, position) => ({
+            product_id: product.id,
+            url,
+            position,
+          }))
+        );
+
+      if (imageError) throw new Error(imageError.message);
+
+      imagesUpdated += 1;
+    }
+
+    if (insertedProducts.length) {
+      const { error: variantError } = await supabase
+        .from("product_variants")
+        .insert(
+          insertedProducts.flatMap(
+            (product: { id: string; slug: string }) => {
+              const draft = draftBySlug.get(product.slug)!;
+
+              return sizesFor(draft.type).map((size) => ({
+                product_id: product.id,
+                size,
+                stock: 1000,
+              }));
+            }
+          )
+        );
+
+      if (variantError) throw new Error(variantError.message);
+    }
+
+    return {
+      imported: insertedProducts.length,
+      skipped: skipped + blockedNba,
+      blockedNba,
+      imagesUpdated,
+      names: newDrafts.map((draft) => draft.name),
+    };
+  } catch (error) {
+    // Solo retiramos los productos NUEVOS de esta tanda. Nunca tocamos
+    // productos que ya existían si falla una actualización de fotos.
+    if (insertedProductIds.length) {
+      await supabase
+        .from("products")
+        .delete()
+        .in("id", insertedProductIds);
+    }
+
+    throw error;
+  }
 }
 
 export async function GET() {
