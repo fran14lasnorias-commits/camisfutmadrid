@@ -92,7 +92,7 @@ export function ProductCard({ product }: { product: Product }) {
         position: "relative",
         overflow: "hidden",
         transition:
-          "transform 220ms cubic-bezier(.2,.8,.2,1), border-color 220ms ease, box-shadow 220ms ease",
+          "transform 160ms ease, border-color 160ms ease",
         transform: hovered ? "translateY(-6px)" : "translateY(0)",
         borderColor: hovered
           ? "rgba(195,92,255,.34)"
@@ -180,6 +180,8 @@ export function ProductCard({ product }: { product: Product }) {
               src={activeImage}
               alt={product.name}
               loading="lazy"
+              decoding="async"
+              fetchPriority="low"
               referrerPolicy="no-referrer"
               onError={() => setImageFailed(true)}
               style={{
