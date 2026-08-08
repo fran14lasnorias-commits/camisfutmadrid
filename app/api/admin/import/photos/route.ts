@@ -47,8 +47,14 @@ function normalizeImageUrl(value: string) {
 
   try {
     const url = new URL(absolute);
-    if (url.hostname.toLowerCase() !== "photo.yupoo.com") return null;
+    const hostname = url.hostname.toLowerCase();
 
+if (
+  hostname !== "yupoo.com" &&
+  !hostname.endsWith(".yupoo.com")
+) {
+  return null;
+}
     // data-origin-src suele ser la foto grande. Si llega una variante conocida,
     // preferimos "large" para dar detalle sin usar originales enormes.
     url.pathname = url.pathname.replace(
@@ -149,10 +155,22 @@ async function scrapeAlbumImages(
         for (const candidate of candidates) {
           if (!candidate) continue;
 
-          if (candidate.includes("photo.yupoo.com")) {
-            urls.push(candidate);
-            break;
-          }
+         try {
+  const absolute = candidate.startsWith("//")
+    ? `https:${candidate}`
+    : candidate;
+
+  const candidateUrl = new URL(absolute);
+  const hostname = candidateUrl.hostname.toLowerCase();
+
+  if (
+    (hostname === "yupoo.com" || hostname.endsWith(".yupoo.com")) &&
+    /\.(jpg|jpeg|png|webp)(\?|$)/i.test(candidateUrl.pathname)
+  ) {
+    urls.push(absolute);
+    break;
+  }
+} catch {}
         }
       }
 
