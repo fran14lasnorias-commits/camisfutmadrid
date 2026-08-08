@@ -203,6 +203,73 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
+
+export async function GET() {
+  try {
+    const { supabase } = await requireAdmin();
+
+    const PAGE_SIZE = 1000;
+    let from = 0;
+    const albums: Array<{ albumId: string; sourceUrl: string }> = [];
+    const seen = new Set<string>();
+
+    while (true) {
+      const { data, error } = await supabase
+        .from("products")
+        .select("supplier_url")
+        .not("supplier_url", "is", null)
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) throw new Error(error.message);
+
+      const rows = data ?? [];
+
+      for (const row of rows as Array<{ supplier_url: string | null }>) {
+        const sourceUrl = row.supplier_url?.trim();
+        if (!sourceUrl) continue;
+
+        const match = sourceUrl.match(/\/albums\/(\d+)/i);
+        if (!match) continue;
+
+        if (seen.has(sourceUrl)) continue;
+        seen.add(sourceUrl);
+
+        albums.push({
+          albumId: match[1],
+          sourceUrl,
+        });
+      }
+
+      if (rows.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+
+    return NextResponse.json(
+      {
+        total: albums.length,
+        albums,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
+    );
+  } catch (error) {
+    console.error("Error leyendo productos para actualizar fotos:", error);
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "No se pudieron leer los productos existentes.",
+      },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: Request) {
   let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
 
