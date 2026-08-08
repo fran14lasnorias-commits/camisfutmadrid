@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Archivo_Black, Barlow_Condensed, Bebas_Neue, Rajdhani } from "next/font/google";
 import { useRouter } from "next/navigation";
 import type { Product } from "@/lib/products";
@@ -168,6 +168,8 @@ export function ProductConfigurator({ product }: { product: Product }) {
   const [view, setView] = useState<"front" | "back">("front");
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   const { addItem } = useCart();
   const router = useRouter();
@@ -192,15 +194,6 @@ export function ProductConfigurator({ product }: { product: Product }) {
     [product.price, sizeExtra, personalizationExtra, patchExtra],
   );
 
-  const onSale =
-    typeof product.originalPrice === "number" &&
-    product.originalPrice > product.price;
-  const discountPercent = onSale
-    ? Math.round(
-        ((product.originalPrice! - product.price) / product.originalPrice!) * 100
-      )
-    : 0;
-
   const previewName = name || "TU NOMBRE";
   const previewNumber = number || "00";
   const patchOptions = useMemo(() => patchOptionsFor(product), [product]);
@@ -220,6 +213,46 @@ export function ProductConfigurator({ product }: { product: Product }) {
 
     if (value && hasBackImage) {
       setView("back");
+    }
+  }
+
+  function showPreviousImage() {
+    if (!hasBackImage) return;
+    setView(view === "front" ? "back" : "front");
+  }
+
+  function showNextImage() {
+    if (!hasBackImage) return;
+    setView(view === "front" ? "back" : "front");
+  }
+
+  function handleTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+    const touch = event.touches[0];
+    touchStartX.current = touch.clientX;
+    touchStartY.current = touch.clientY;
+  }
+
+  function handleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
+    if (!hasBackImage || touchStartX.current === null || touchStartY.current === null) {
+      touchStartX.current = null;
+      touchStartY.current = null;
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - touchStartX.current;
+    const deltaY = touch.clientY - touchStartY.current;
+
+    touchStartX.current = null;
+    touchStartY.current = null;
+
+    // Solo cambiamos de foto si el gesto es claramente horizontal.
+    if (Math.abs(deltaX) < 45 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+
+    if (deltaX < 0) {
+      showNextImage();
+    } else {
+      showPreviousImage();
     }
   }
 
@@ -295,12 +328,38 @@ export function ProductConfigurator({ product }: { product: Product }) {
           </div>
         </div>
 
-        <div className={styles.previewStage}>
+        <div
+            className={styles.previewStage}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            style={{ position: "relative", touchAction: "pan-y" }}
+          >
           <img
             src={activeImage}
             alt={`${product.name}, vista ${view === "back" ? "trasera" : "frontal"}`}
             className={styles.productImage}
           />
+
+          {hasBackImage && (
+            <>
+              <button
+                type="button"
+                onClick={showPreviousImage}
+                aria-label="Ver imagen anterior"
+                style={galleryArrowLeft}
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                onClick={showNextImage}
+                aria-label="Ver imagen siguiente"
+                style={galleryArrowRight}
+              >
+                ›
+              </button>
+            </>
+          )}
 
           {view === "back" && personalized && (
             <div className={`${styles.personalizationLayer} ${letteringProfile.className}`} aria-hidden="true">
@@ -317,7 +376,20 @@ export function ProductConfigurator({ product }: { product: Product }) {
         </div>
 
         <div className={styles.previewFooter}>
-          <span>Vista orientativa con {letteringProfile.label}.</span>
+          <div style={{ display: "grid", gap: 7 }}>
+            <span>Vista orientativa con {letteringProfile.label}.</span>
+            {hasBackImage && (
+              <span style={{ color: "#aaa4b5", fontSize: 12 }}>
+                En móvil puedes deslizar la camiseta a izquierda o derecha.
+              </span>
+            )}
+            {hasBackImage && (
+              <div style={{ display: "flex", gap: 6 }} aria-label="Posición de la galería">
+                <span style={view === "front" ? galleryDotActive : galleryDot} />
+                <span style={view === "back" ? galleryDotActive : galleryDot} />
+              </div>
+            )}
+          </div>
           <div className={styles.thumbnailRow}>
             <button
               type="button"
@@ -347,44 +419,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
         <p className={styles.meta}>Versión {product.type} · {product.season}</p>
 
         <div className={styles.priceLine}>
-          <div>
-            {onSale && (
-              <div
-                style={{
-                  display:"flex",
-                  alignItems:"center",
-                  gap:9,
-                  marginBottom:5,
-                  flexWrap:"wrap",
-                }}
-              >
-                <span
-                  style={{
-                    color:"#7d7d88",
-                    fontSize:14,
-                    fontWeight:700,
-                    textDecoration:"line-through",
-                  }}
-                >
-                  {money(product.originalPrice!)}
-                </span>
-                <span
-                  style={{
-                    padding:"4px 7px",
-                    borderRadius:999,
-                    background:"rgba(255,72,105,.13)",
-                    border:"1px solid rgba(255,72,105,.28)",
-                    color:"#ff9aaa",
-                    fontSize:10,
-                    fontWeight:900,
-                  }}
-                >
-                  -{discountPercent}%
-                </span>
-              </div>
-            )}
-            <strong className={styles.price}>{money(total)}</strong>
-          </div>
+          <strong className={styles.price}>{money(total)}</strong>
           <span className={styles.priceNote}>Precio actualizado<br />en tiempo real</span>
         </div>
 
@@ -525,21 +560,8 @@ export function ProductConfigurator({ product }: { product: Product }) {
 
         <div className={styles.priceBreakdown}>
           <div className={styles.priceRow}>
-            <span>{onSale ? "Camiseta · oferta" : "Camiseta"}</span>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              {onSale && (
-                <span
-                  style={{
-                    color:"#777783",
-                    fontSize:12,
-                    textDecoration:"line-through",
-                  }}
-                >
-                  {money(product.originalPrice!)}
-                </span>
-              )}
-              <strong>{money(product.price)}</strong>
-            </div>
+            <span>Camiseta</span>
+            <strong>{money(product.price)}</strong>
           </div>
           {sizeExtra > 0 && (
             <div className={styles.priceRow}>
@@ -589,3 +611,45 @@ export function ProductConfigurator({ product }: { product: Product }) {
     </main>
   );
 }
+
+const galleryArrowBase = {
+  position: "absolute" as const,
+  top: "50%",
+  transform: "translateY(-50%)",
+  zIndex: 4,
+  width: 42,
+  height: 42,
+  display: "grid",
+  placeItems: "center",
+  borderRadius: "50%",
+  border: "1px solid rgba(255,255,255,.16)",
+  background: "rgba(8,8,12,.68)",
+  color: "white",
+  fontSize: 30,
+  lineHeight: 1,
+  cursor: "pointer",
+  backdropFilter: "blur(8px)",
+};
+
+const galleryArrowLeft = {
+  ...galleryArrowBase,
+  left: 12,
+};
+
+const galleryArrowRight = {
+  ...galleryArrowBase,
+  right: 12,
+};
+
+const galleryDot = {
+  width: 7,
+  height: 7,
+  borderRadius: 999,
+  background: "rgba(255,255,255,.28)",
+};
+
+const galleryDotActive = {
+  ...galleryDot,
+  width: 20,
+  background: "#c35cff",
+};
