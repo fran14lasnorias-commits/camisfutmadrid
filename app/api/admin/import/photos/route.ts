@@ -317,10 +317,9 @@ export async function POST(request: Request) {
       }
     );
 
-    const { data: products, error: productsError } = await supabase
-      .from("products")
-      .select("id,supplier_url")
-      .in("supplier_url", supplierUrls);
+  const { data: products, error: productsError } = await supabase
+  .from("products")
+  .select("id,supplier_url");
 
     if (productsError) throw new Error(productsError.message);
 
