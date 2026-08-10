@@ -238,63 +238,93 @@ async function mapWithConcurrency<T, R>(
 export async function GET() {
   try {
     const { supabase } = await requireAdmin();
-
     const PAGE_SIZE = 1000;
-    let from = 0;
-    const albums: Array<{ albumId: string; sourceUrl: string }> = [];
-    const seen = new Set<string>();
+
+    let productFrom = 0;
+    const products: Array<{ id: string; albumId: string; sourceUrl: string }> = [];
+    const seenAlbumIds = new Set<string>();
 
     while (true) {
       const { data, error } = await supabase
         .from("products")
-        .select("supplier_url")
+        .select("id,supplier_url")
         .not("supplier_url", "is", null)
-        .range(from, from + PAGE_SIZE - 1);
+        .order("id", { ascending: true })
+        .range(productFrom, productFrom + PAGE_SIZE - 1);
 
       if (error) throw new Error(error.message);
 
-      const rows = data ?? [];
+      const rows = (data ?? []) as Array<{ id: string; supplier_url: string | null }>;
 
-      for (const row of rows as Array<{ supplier_url: string | null }>) {
+      for (const row of rows) {
         const sourceUrl = row.supplier_url?.trim();
         if (!sourceUrl) continue;
 
         const match = sourceUrl.match(/\/albums\/(\d+)/i);
         if (!match) continue;
 
-        if (seen.has(sourceUrl)) continue;
-        seen.add(sourceUrl);
+        const albumId = match[1];
+        if (seenAlbumIds.has(albumId)) continue;
+        seenAlbumIds.add(albumId);
 
-        albums.push({
-          albumId: match[1],
-          sourceUrl,
-        });
+        products.push({ id: row.id, albumId, sourceUrl });
       }
 
       if (rows.length < PAGE_SIZE) break;
-      from += PAGE_SIZE;
+      productFrom += PAGE_SIZE;
     }
 
-    return NextResponse.json(
-      {
-        total: albums.length,
-        albums,
-      },
-      {
-        headers: {
-          "Cache-Control": "no-store",
-        },
+    let imageFrom = 0;
+    const imageCountByProduct = new Map<string, number>();
+
+    while (true) {
+      const { data, error } = await supabase
+        .from("product_images")
+        .select("product_id")
+        .order("product_id", { ascending: true })
+        .range(imageFrom, imageFrom + PAGE_SIZE - 1);
+
+      if (error) throw new Error(error.message);
+
+      const rows = (data ?? []) as Array<{ product_id: string }>;
+
+      for (const row of rows) {
+        imageCountByProduct.set(
+          row.product_id,
+          (imageCountByProduct.get(row.product_id) ?? 0) + 1
+        );
       }
+
+      if (rows.length < PAGE_SIZE) break;
+      imageFrom += PAGE_SIZE;
+    }
+
+    const albums = products.map((product) => {
+      const imageCount = imageCountByProduct.get(product.id) ?? 0;
+      return {
+        albumId: product.albumId,
+        sourceUrl: product.sourceUrl,
+        imageCount,
+        completed: imageCount >= 2,
+      };
+    });
+
+    const completed = albums.filter((album) => album.completed).length;
+    const pending = albums.length - completed;
+    const imagesSaved = albums.reduce((sum, album) => sum + album.imageCount, 0);
+
+    return NextResponse.json(
+      { total: albums.length, completed, pending, imagesSaved, albums },
+      { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {
-    console.error("Error leyendo productos para actualizar fotos:", error);
-
+    console.error("Error leyendo progreso real de galerías:", error);
     return NextResponse.json(
       {
         error:
           error instanceof Error
             ? error.message
-            : "No se pudieron leer los productos existentes.",
+            : "No se pudo leer el progreso real de las galerías.",
       },
       { status: 500 }
     );
@@ -337,42 +367,25 @@ export async function POST(request: Request) {
       }
     );
 
-    // Supabase devuelve como máximo 1.000 filas por consulta.
-    // Cargamos todos los productos por páginas para que el mapa incluya
-    // también los álbumes 1001, 1002, etc.
-    const PRODUCT_PAGE_SIZE = 1000;
-    let productFrom = 0;
-    const productByAlbum = new Map<string, string>();
+const { data: products, error: productsError } = await supabase
+  .from("products")
+  .select("id,supplier_url");
 
-    while (true) {
-      const { data: productRows, error: productsError } = await supabase
-        .from("products")
-        .select("id,supplier_url")
-        .not("supplier_url", "is", null)
-        .range(productFrom, productFrom + PRODUCT_PAGE_SIZE - 1);
+if (productsError) {
+  throw new Error(productsError.message);
+}
 
-      if (productsError) {
-        throw new Error(productsError.message);
-      }
+const productByAlbum = new Map<string, string>();
 
-      const rows =
-        (productRows ?? []) as Array<{
-          id: string;
-          supplier_url: string | null;
-        }>;
+for (const product of products ?? []) {
+  if (!product.supplier_url) continue;
 
-      for (const product of rows) {
-        if (!product.supplier_url) continue;
+  const match = product.supplier_url.match(/\/albums\/(\d+)/i);
 
-        const match = product.supplier_url.match(/\/albums\/(\d+)/i);
-        if (!match) continue;
+  if (!match) continue;
 
-        productByAlbum.set(match[1], product.id);
-      }
-
-      if (rows.length < PRODUCT_PAGE_SIZE) break;
-      productFrom += PRODUCT_PAGE_SIZE;
-    }
+  productByAlbum.set(match[1], product.id);
+}
 
     let updated = 0;
     let imagesSaved = 0;
