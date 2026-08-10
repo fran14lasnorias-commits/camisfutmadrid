@@ -27,82 +27,9 @@ const MAX_TOTAL_PRODUCTS = 10_000;
 const MAX_PAGES_TO_SCAN = 500;
 const PAGE_REQUEST_LIMIT = 50;
 const SAVE_CHUNK_SIZE = 200;
-const PHOTO_CHUNK_SIZE = 3;
-const PHOTO_PROGRESS_KEY = "camisfutmadrid:yupoo-gallery-progress:v1";
-
+const PHOTO_CHUNK_SIZE = 1;
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function loadCompletedPhotoAlbums() {
-  if (typeof window === "undefined") return new Set<string>();
-
-  try {
-    const raw = window.localStorage.getItem(PHOTO_PROGRESS_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return new Set<string>(Array.isArray(parsed) ? parsed : []);
-  } catch {
-    return new Set<string>();
-  }
-}
-
-function saveCompletedPhotoAlbums(ids: Set<string>) {
-  if (typeof window === "undefined") return;
-
-  try {
-    window.localStorage.setItem(PHOTO_PROGRESS_KEY, JSON.stringify([...ids]));
-  } catch {}
-}
-
-
-function encodeHex(value: string) {
-  return Array.from(new TextEncoder().encode(value))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function proxiedYupooImage(sourceUrl: string, refererUrl: string) {
-  const source = encodeHex(sourceUrl);
-  const referer = encodeHex(refererUrl);
-
-  return `/api/yupoo-image?u=${source}&r=${referer}`;
-}
-
-function YupooCover({ album }: { album: Album }) {
-  const [failed, setFailed] = useState(false);
-
-  if (!album.coverImage || failed) {
-    return (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "grid",
-          placeItems: "center",
-          padding: 18,
-          color: "#9999a5",
-          textAlign: "center",
-        }}
-      >
-        Foto no disponible
-      </div>
-    );
-  }
-
-  return (
-    <img
-      src={proxiedYupooImage(album.coverImage, album.sourceUrl)}
-      alt={album.title}
-      loading="lazy"
-      referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
-      style={{
-        width: "100%",
-        height: "100%",
-        objectFit: "cover",
-      }}
-    />
-  );
 }
 
 export function YupooCatalogImporter() {
@@ -413,7 +340,7 @@ export function YupooCatalogImporter() {
     if (updatingAllPhotos || saving || loading) return;
 
     setUpdatingAllPhotos(true);
-    setAllPhotosProgress("Buscando todos los productos de la tienda...");
+    setAllPhotosProgress("Leyendo progreso real desde Supabase...");
     setAllPhotosResult(null);
     setMessage("");
 
@@ -422,199 +349,131 @@ export function YupooCatalogImporter() {
         method: "GET",
         cache: "no-store",
       });
-
       const listData = await listResponse.json();
 
       if (!listResponse.ok) {
-        throw new Error(
-          listData.error ?? "No se pudieron leer los productos existentes."
-        );
+        throw new Error(listData.error ?? "No se pudo leer el progreso.");
       }
 
       const albums = Array.isArray(listData.albums) ? listData.albums : [];
-
-      if (!albums.length) {
-        throw new Error(
-          "No se han encontrado productos con un álbum de Yupoo asociado."
-        );
-      }
-
-      const completed = loadCompletedPhotoAlbums();
       const pendingAlbums = albums.filter(
-        (album: { albumId: string }) => !completed.has(album.albumId)
+        (album: { completed?: boolean }) => album.completed !== true
       );
 
       if (!pendingAlbums.length) {
         setAllPhotosResult({
-          products: albums.length,
-          updated: albums.length,
-          images: 0,
+          products: Number(listData.total ?? 0),
+          updated: Number(listData.completed ?? 0),
+          images: Number(listData.imagesSaved ?? 0),
           failed: 0,
         });
         setAllPhotosProgress(
-          "Todas las galerías ya estaban procesadas. No queda nada pendiente."
+          `Terminado · ${Number(listData.completed ?? 0).toLocaleString("es-ES")} completas · 0 pendientes`
         );
         return;
       }
 
-      let updated = 0;
-      let images = 0;
       let failed = 0;
 
-      for (
-        let start = 0;
-        start < pendingAlbums.length;
-        start += PHOTO_CHUNK_SIZE
-      ) {
-        const chunk = pendingAlbums.slice(start, start + PHOTO_CHUNK_SIZE);
-        const batchNumber = Math.floor(start / PHOTO_CHUNK_SIZE) + 1;
-        const totalBatches = Math.ceil(
-          pendingAlbums.length / PHOTO_CHUNK_SIZE
-        );
+      for (let i = 0; i < pendingAlbums.length; i += 1) {
+        const album = pendingAlbums[i];
 
         setAllPhotosProgress(
-          `Añadiendo fotos · tanda ${batchNumber} de ${totalBatches} · ` +
-            `${Math.min(
-              start + chunk.length,
-              pendingAlbums.length
-            ).toLocaleString("es-ES")} / ${pendingAlbums.length.toLocaleString(
-              "es-ES"
-            )} pendientes · ` +
-            `${completed.size.toLocaleString("es-ES")} ya completados`
+          `Procesando ${i + 1} / ${pendingAlbums.length} pendientes · ` +
+          `${Number(listData.completed ?? 0).toLocaleString("es-ES")} ya completas`
         );
 
-        let data: any = null;
-        let succeeded = false;
+        let ok = false;
         let lastError = "";
 
         for (let attempt = 1; attempt <= 3; attempt += 1) {
           try {
             const controller = new AbortController();
-            const timeout = window.setTimeout(
-              () => controller.abort(),
-              55_000
-            );
+            const timeout = window.setTimeout(() => controller.abort(), 55_000);
 
             const response = await fetch("/api/admin/import/photos", {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                albums: chunk,
-              }),
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ albums: [album] }),
               signal: controller.signal,
             });
 
             window.clearTimeout(timeout);
-
-            data = await response.json().catch(() => ({}));
+            const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-              throw new Error(
-                data.error ??
-                  `La API respondió ${response.status} en la tanda ${batchNumber}.`
-              );
+              throw new Error(data.error ?? `HTTP ${response.status}`);
             }
 
-            succeeded = true;
-            break;
+            if (Number(data.updated ?? 0) > 0) {
+              ok = true;
+              break;
+            }
+
+            const detail = Array.isArray(data.details) ? data.details[0] : null;
+            throw new Error(detail?.error ?? "No se pudo guardar la galería.");
           } catch (error) {
-            lastError =
-              error instanceof Error
-                ? error.message
-                : "La petición de fotos se interrumpió.";
-
-            if (attempt < 3) {
-              setAllPhotosProgress(
-                `Tanda ${batchNumber}: intento ${attempt} falló. ` +
-                  `Reintentando en ${attempt * 2}s...`
-              );
-              await sleep(attempt * 2000);
-            }
+            lastError = error instanceof Error ? error.message : "Petición interrumpida.";
+            if (attempt < 3) await sleep(attempt * 1500);
           }
         }
 
-        if (!succeeded || !data) {
-          failed += chunk.length;
-          setMessage(
-            `La tanda ${batchNumber} no pudo completarse tras 3 intentos: ${lastError}. ` +
-              `Puedes volver a pulsar el botón y continuará desde lo ya guardado.`
-          );
-          await sleep(800);
-          continue;
+        if (!ok) {
+          failed += 1;
+          setMessage(`Un álbum falló tras 3 intentos: ${lastError}. Continúo con el siguiente.`);
         }
 
-        updated += Number(data.updated ?? 0);
-        images += Number(data.imagesSaved ?? 0);
+        if ((i + 1) % 10 === 0 || i === pendingAlbums.length - 1) {
+          const progressResponse = await fetch("/api/admin/import/photos", {
+            method: "GET",
+            cache: "no-store",
+          });
+          const progressData = await progressResponse.json();
 
-        const details = Array.isArray(data.details) ? data.details : [];
-        const successfulIds = new Set<string>();
-
-        for (const detail of details) {
-          if (detail?.updated === true && detail?.albumId) {
-            successfulIds.add(String(detail.albumId));
+          if (progressResponse.ok) {
+            setAllPhotosProgress(
+              `Progreso real · ${Number(progressData.completed ?? 0).toLocaleString("es-ES")} completas · ` +
+              `${Number(progressData.pending ?? 0).toLocaleString("es-ES")} pendientes`
+            );
+            setAllPhotosResult({
+              products: Number(progressData.total ?? 0),
+              updated: Number(progressData.completed ?? 0),
+              images: Number(progressData.imagesSaved ?? 0),
+              failed,
+            });
           }
         }
 
-        if (
-          successfulIds.size === 0 &&
-          Number(data.updated ?? 0) === chunk.length
-        ) {
-          for (const album of chunk) {
-            successfulIds.add(String(album.albumId));
-          }
-        }
+        await sleep(400);
+      }
 
-        for (const albumId of successfulIds) {
-          completed.add(albumId);
-        }
+      const finalResponse = await fetch("/api/admin/import/photos", {
+        method: "GET",
+        cache: "no-store",
+      });
+      const finalData = await finalResponse.json();
 
-        saveCompletedPhotoAlbums(completed);
-
-        failed +=
-          Number(data.withoutProduct ?? 0) +
-          Number(data.withoutImages ?? 0);
-
-        await sleep(700);
+      if (!finalResponse.ok) {
+        throw new Error(finalData.error ?? "No se pudo comprobar el resultado final.");
       }
 
       setAllPhotosResult({
-        products: albums.length,
-        updated,
-        images,
+        products: Number(finalData.total ?? 0),
+        updated: Number(finalData.completed ?? 0),
+        images: Number(finalData.imagesSaved ?? 0),
         failed,
       });
 
-      const remaining = albums.filter(
-        (album: { albumId: string }) => !completed.has(album.albumId)
-      ).length;
-
-      if (remaining > 0) {
-        setAllPhotosProgress(
-          `Pausa terminada · ${completed.size.toLocaleString(
-            "es-ES"
-          )} galerías completadas · ${remaining.toLocaleString(
-            "es-ES"
-          )} pendientes. Pulsa de nuevo para continuar solo con las pendientes.`
-        );
-      } else {
-        setAllPhotosProgress(
-          `Terminado · ${completed.size.toLocaleString(
-            "es-ES"
-          )} galerías completadas · ${images.toLocaleString(
-            "es-ES"
-          )} imágenes añadidas en esta ejecución`
-        );
-      }
+      setAllPhotosProgress(
+        `Progreso real · ${Number(finalData.completed ?? 0).toLocaleString("es-ES")} completas · ` +
+        `${Number(finalData.pending ?? 0).toLocaleString("es-ES")} pendientes`
+      );
     } catch (error) {
       setMessage(
-        error instanceof Error
-          ? error.message
-          : "No se pudieron actualizar todas las galerías."
+        error instanceof Error ? error.message : "No se pudieron actualizar las galerías."
       );
       setAllPhotosProgress(
-        "La ejecución se ha detenido, pero el progreso ya guardado no se pierde. Puedes pulsar de nuevo para continuar."
+        "El proceso se detuvo, pero todo lo guardado en Supabase permanece."
       );
     } finally {
       setUpdatingAllPhotos(false);
