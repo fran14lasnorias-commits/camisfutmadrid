@@ -367,25 +367,40 @@ export async function POST(request: Request) {
       }
     );
 
-const { data: products, error: productsError } = await supabase
-  .from("products")
-  .select("id,supplier_url");
+    const PRODUCT_PAGE_SIZE = 1000;
+    let productFrom = 0;
+    const productByAlbum = new Map<string, string>();
 
-if (productsError) {
-  throw new Error(productsError.message);
-}
+    while (true) {
+      const { data: productRows, error: productsError } = await supabase
+        .from("products")
+        .select("id,supplier_url")
+        .not("supplier_url", "is", null)
+        .order("id", { ascending: true })
+        .range(productFrom, productFrom + PRODUCT_PAGE_SIZE - 1);
 
-const productByAlbum = new Map<string, string>();
+      if (productsError) {
+        throw new Error(productsError.message);
+      }
 
-for (const product of products ?? []) {
-  if (!product.supplier_url) continue;
+      const rows =
+        (productRows ?? []) as Array<{
+          id: string;
+          supplier_url: string | null;
+        }>;
 
-  const match = product.supplier_url.match(/\/albums\/(\d+)/i);
+      for (const product of rows) {
+        if (!product.supplier_url) continue;
 
-  if (!match) continue;
+        const match = product.supplier_url.match(/\/albums\/(\d+)/i);
+        if (!match) continue;
 
-  productByAlbum.set(match[1], product.id);
-}
+        productByAlbum.set(match[1], product.id);
+      }
+
+      if (rows.length < PRODUCT_PAGE_SIZE) break;
+      productFrom += PRODUCT_PAGE_SIZE;
+    }
 
     let updated = 0;
     let imagesSaved = 0;
