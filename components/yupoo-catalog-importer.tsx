@@ -32,6 +32,56 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function encodeHex(value: string) {
+  return Array.from(new TextEncoder().encode(value))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function proxiedYupooImage(sourceUrl: string, refererUrl: string) {
+  const source = encodeHex(sourceUrl);
+  const referer = encodeHex(refererUrl);
+
+  return `/api/yupoo-image?u=${source}&r=${referer}`;
+}
+
+function YupooCover({ album }: { album: Album }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!album.coverImage || failed) {
+    return (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "grid",
+          placeItems: "center",
+          padding: 18,
+          color: "#9999a5",
+          textAlign: "center",
+        }}
+      >
+        Foto no disponible
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={proxiedYupooImage(album.coverImage, album.sourceUrl)}
+      alt={album.title}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+      style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+      }}
+    />
+  );
+}
+
 export function YupooCatalogImporter() {
   const [url, setUrl] = useState(DEFAULT_CATALOG);
   const [scanProgress, setScanProgress] = useState("");
