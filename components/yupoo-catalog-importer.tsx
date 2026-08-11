@@ -429,7 +429,7 @@ export function YupooCatalogImporter() {
         const album = pendingAlbums[i];
 
         setAllPhotosProgress(
-          `Procesando ${i + 1} / ${pendingAlbums.length} pendientes · ` +
+          `Modo ligero · procesando ${i + 1} / ${pendingAlbums.length} pendientes · ` +
           `${Number(listData.completed ?? 0).toLocaleString("es-ES")} ya completas`
         );
 
@@ -473,7 +473,7 @@ export function YupooCatalogImporter() {
           setMessage(`Un álbum falló tras 3 intentos: ${lastError}. Continúo con el siguiente.`);
         }
 
-        if ((i + 1) % 10 === 0 || i === pendingAlbums.length - 1) {
+        if ((i + 1) % 100 === 0 || i === pendingAlbums.length - 1) {
           const progressResponse = await fetch("/api/admin/import/photos", {
             method: "GET",
             cache: "no-store",
@@ -494,7 +494,7 @@ export function YupooCatalogImporter() {
           }
         }
 
-        await sleep(400);
+        await sleep(1500);
       }
 
       const finalResponse = await fetch("/api/admin/import/photos", {
