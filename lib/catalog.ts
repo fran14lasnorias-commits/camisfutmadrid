@@ -23,7 +23,7 @@ export type CatalogQuery = {
   team?: string;
   season?: string;
   type?: Product["type"] | null;
-  teams?: string[];
+  matchTerms?: string[];
   sort?: "newest" | "price_asc" | "price_desc" | "name";
 };
 
@@ -77,7 +77,9 @@ function mapProduct(
         ? Number(row.original_price_eur)
         : undefined,
     costUsd: Number(row.supplier_cost_usd),
-    images: images.length ? images : ["/placeholder-shirt.svg"],
+    images: images.length
+      ? images
+      : ["/placeholder-shirt.svg", "/placeholder-shirt-back.svg"],
     sizes: sizes.length
       ? sizes
       : row.type === "kids"
@@ -135,6 +137,7 @@ export async function getPublishedProducts(
     .eq("product_images.position", 0)
     .order("created_at", { ascending: false });
 
+  // Evita que una página accidentalmente descargue miles de productos.
   query = query.limit(Math.min(options.limit ?? 120, 250));
 
   const { data, error } = await query;
@@ -145,9 +148,7 @@ export async function getPublishedProducts(
       : fallbackProducts;
   }
 
-  return (data as ProductRow[]).map((row) =>
-    mapProduct(row, false, false)
-  );
+  return (data as ProductRow[]).map((row) => mapProduct(row, false, false));
 }
 
 export async function getPublishedProductsPage(
@@ -178,13 +179,15 @@ export async function getPublishedProductsPage(
     if (team) rows = rows.filter((item) => item.team === team);
     if (season) rows = rows.filter((item) => item.season === season);
     if (options.type) rows = rows.filter((item) => item.type === options.type);
-    if (options.teams?.length) {
-      const allowed = new Set(
-        options.teams.map((item) => item.toLocaleLowerCase("es"))
-      );
-      rows = rows.filter((item) =>
-        allowed.has(item.team.toLocaleLowerCase("es"))
-      );
+    if (options.matchTerms?.length) {
+      const terms = options.matchTerms
+        .map((item) => item.toLocaleLowerCase("es").trim())
+        .filter(Boolean);
+
+      rows = rows.filter((item) => {
+        const haystack = `${item.team} ${item.name}`.toLocaleLowerCase("es");
+        return terms.some((term) => haystack.includes(term));
+      });
     }
 
     const count = rows.length;
@@ -216,8 +219,22 @@ export async function getPublishedProductsPage(
   if (season) query = query.eq("season", season);
   if (options.type) query = query.eq("type", options.type);
 
-  if (options.teams?.length) {
-    query = query.in("team", options.teams);
+  if (options.matchTerms?.length) {
+    const terms = options.matchTerms
+      .map((item) => cleanSearch(item))
+      .filter(Boolean)
+      .slice(0, 80);
+
+    if (terms.length) {
+      const categoryOr = terms
+        .flatMap((term) => [
+          `team.ilike.%${term}%`,
+          `name.ilike.%${term}%`,
+        ])
+        .join(",");
+
+      query = query.or(categoryOr);
+    }
   }
 
   switch (options.sort) {
@@ -249,9 +266,7 @@ export async function getPublishedProductsPage(
   }
 
   return {
-    products: (data as ProductRow[]).map((row) =>
-      mapProduct(row, false, false)
-    ),
+    products: (data as ProductRow[]).map((row) => mapProduct(row, false, false)),
     count: count ?? 0,
     page: requestedPage,
     pageSize,
