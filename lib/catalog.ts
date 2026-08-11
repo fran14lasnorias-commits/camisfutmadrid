@@ -23,7 +23,7 @@ export type CatalogQuery = {
   team?: string;
   season?: string;
   type?: Product["type"] | null;
-  matchTerms?: string[];
+  teams?: string[];
   sort?: "newest" | "price_asc" | "price_desc" | "name";
 };
 
@@ -54,8 +54,13 @@ function orderedSizes(
     .map((variant) => variant.size);
 }
 
-function mapProduct(row: ProductRow, includeRealSizes = false): Product {
-  const images = orderedImages(row.product_images);
+function mapProduct(
+  row: ProductRow,
+  includeRealSizes = false,
+  includeFullGallery = true
+): Product {
+  const allImages = orderedImages(row.product_images);
+  const images = includeFullGallery ? allImages : allImages.slice(0, 1);
   const sizes = includeRealSizes ? orderedSizes(row.product_variants) : [];
 
   return {
@@ -72,9 +77,7 @@ function mapProduct(row: ProductRow, includeRealSizes = false): Product {
         ? Number(row.original_price_eur)
         : undefined,
     costUsd: Number(row.supplier_cost_usd),
-    images: images.length
-      ? images
-      : ["/placeholder-shirt.svg", "/placeholder-shirt-back.svg"],
+    images: images.length ? images : ["/placeholder-shirt.svg"],
     sizes: sizes.length
       ? sizes
       : row.type === "kids"
@@ -129,9 +132,9 @@ export async function getPublishedProducts(
     .from("products")
     .select(listProductSelect)
     .eq("published", true)
+    .eq("product_images.position", 0)
     .order("created_at", { ascending: false });
 
-  // Evita que una página accidentalmente descargue miles de productos.
   query = query.limit(Math.min(options.limit ?? 120, 250));
 
   const { data, error } = await query;
@@ -142,7 +145,9 @@ export async function getPublishedProducts(
       : fallbackProducts;
   }
 
-  return (data as ProductRow[]).map((row) => mapProduct(row, false));
+  return (data as ProductRow[]).map((row) =>
+    mapProduct(row, false, false)
+  );
 }
 
 export async function getPublishedProductsPage(
@@ -173,15 +178,13 @@ export async function getPublishedProductsPage(
     if (team) rows = rows.filter((item) => item.team === team);
     if (season) rows = rows.filter((item) => item.season === season);
     if (options.type) rows = rows.filter((item) => item.type === options.type);
-    if (options.matchTerms?.length) {
-      const terms = options.matchTerms
-        .map((item) => item.toLocaleLowerCase("es").trim())
-        .filter(Boolean);
-
-      rows = rows.filter((item) => {
-        const haystack = `${item.team} ${item.name}`.toLocaleLowerCase("es");
-        return terms.some((term) => haystack.includes(term));
-      });
+    if (options.teams?.length) {
+      const allowed = new Set(
+        options.teams.map((item) => item.toLocaleLowerCase("es"))
+      );
+      rows = rows.filter((item) =>
+        allowed.has(item.team.toLocaleLowerCase("es"))
+      );
     }
 
     const count = rows.length;
@@ -199,7 +202,8 @@ export async function getPublishedProductsPage(
   let query = supabase
     .from("products")
     .select(listProductSelect, { count: "exact" })
-    .eq("published", true);
+    .eq("published", true)
+    .eq("product_images.position", 0);
 
   if (q) {
     const search = `%${q}%`;
@@ -212,22 +216,8 @@ export async function getPublishedProductsPage(
   if (season) query = query.eq("season", season);
   if (options.type) query = query.eq("type", options.type);
 
-  if (options.matchTerms?.length) {
-    const terms = options.matchTerms
-      .map((item) => cleanSearch(item))
-      .filter(Boolean)
-      .slice(0, 80);
-
-    if (terms.length) {
-      const categoryOr = terms
-        .flatMap((term) => [
-          `team.ilike.%${term}%`,
-          `name.ilike.%${term}%`,
-        ])
-        .join(",");
-
-      query = query.or(categoryOr);
-    }
+  if (options.teams?.length) {
+    query = query.in("team", options.teams);
   }
 
   switch (options.sort) {
@@ -259,7 +249,9 @@ export async function getPublishedProductsPage(
   }
 
   return {
-    products: (data as ProductRow[]).map((row) => mapProduct(row, false)),
+    products: (data as ProductRow[]).map((row) =>
+      mapProduct(row, false, false)
+    ),
     count: count ?? 0,
     page: requestedPage,
     pageSize,
@@ -285,5 +277,5 @@ export async function getPublishedProductBySlug(
     return fallbackProducts.find((product) => product.slug === slug) ?? null;
   }
 
-  return mapProduct(data as ProductRow, true);
+  return mapProduct(data as ProductRow, true, true);
 }
